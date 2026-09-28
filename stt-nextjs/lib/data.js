@@ -187,12 +187,11 @@ async function getIgSeries(client) {
   return { igFoll, igReach };
 }
 
-// YouTube Analytics' own ageGroup dimension values come back prefixed
-// ("ageGroup25-34"), unlike the design bundle's clean "25-34" — strip the
-// prefix defensively either way so this works whether or not the API
-// already reports it bare.
+// YouTube Analytics' own ageGroup dimension values come back prefixed —
+// confirmed live as "age25-34" (not the design bundle's clean "25-34"), but
+// strip a leading "ageGroup" too in case the API ever reports it that way.
 function stripAgePrefix(raw) {
-  return String(raw || '').replace(/^ageGroup/i, '');
+  return String(raw || '').replace(/^ageGroup/i, '').replace(/^age(?=\d)/i, '');
 }
 
 async function getBreakdowns(client) {
