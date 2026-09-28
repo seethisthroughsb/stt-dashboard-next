@@ -626,6 +626,14 @@ a:hover { color: var(--text-link-hover); border-bottom-color: var(--stt-rust-hov
 /* "Where the views come from" style ad-hoc responsive column groups. */
 .stt-auto-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-6); }
 
+/* Fan Voice's sentiment-mix side panel: sticky on desktop (secondary but
+   always visible while scrolling the comment list), static once it's
+   dropped below the list on mobile (SplitRow's [data-reorder] rule). */
+.stt-fanvoice-side { position: sticky; top: 88px; }
+@media (max-width: 759px) {
+  .stt-fanvoice-side { position: static; }
+}
+
 /* ---- Font loading override: next/font (layout.js) generates its own scoped
    CSS variables for both faces and applies them via <html> className. Point
    the design system's font-role tokens at those variables instead of the

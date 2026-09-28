@@ -90,15 +90,15 @@ export function RightNow({ d }) {
         label="Fan voice"
         note={days == null ? 'No comments yet' : `${days} days since last comment`}
         action={
-          <span
-            title="Fan Voice — coming in a later step"
+          <a
+            href="/voice"
             style={{
               font: 'var(--type-label)', letterSpacing: 'var(--tracking-label)', textTransform: 'uppercase',
-              color: 'var(--text-disabled)', flex: 'none',
+              color: 'var(--text-heading)', borderBottom: '1px solid var(--stt-rust)', flex: 'none',
             }}
           >
             All comments →
-          </span>
+          </a>
         }
       >
         <SplitRow>

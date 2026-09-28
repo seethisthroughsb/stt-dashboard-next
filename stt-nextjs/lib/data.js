@@ -32,6 +32,18 @@ function splitTags(manualTag, sentimentTag) {
   return raw.split(',').map((t) => t.trim()).filter(Boolean);
 }
 
+// Same as splitTags, but a comment with no tag at all yet (still queued, or
+// its Gemini call failed and is waiting on a retry — our schema can't tell
+// those apart, and doesn't need to) gets the synthetic 'Unreviewed' tag, so
+// it renders as the design's dashed processing-state chip instead of no
+// chip at all. Fan Voice and any tag-count view should use this variant;
+// getWrittenForMe() above never needs it since that query only ever
+// matches already-tagged rows.
+function tagsForComment(manualTag, sentimentTag) {
+  const tags = splitTags(manualTag, sentimentTag);
+  return tags.length ? tags : ['Unreviewed'];
+}
+
 function fmtPullDate(d) {
   if (!d) return '—';
   const date = new Date(d);
@@ -80,7 +92,9 @@ async function getTotals(client) {
          COUNT(*) FILTER (WHERE platform = 'YouTube') AS yt_comments,
          COUNT(*) FILTER (WHERE platform IN ('Facebook', 'Instagram')) AS meta_comments,
          COUNT(*) AS all_comments,
-         COUNT(DISTINCT author) AS unique_authors
+         COUNT(DISTINCT author) AS unique_authors,
+         COUNT(*) FILTER (WHERE emoji_only = TRUE) AS emoji_only,
+         COUNT(*) FILTER (WHERE COALESCE(manual_tag, sentiment_tag) ILIKE '%Written for Me%') AS written_for_me
        FROM comments
        WHERE excluded = FALSE`
     ),
@@ -104,7 +118,8 @@ async function getTotals(client) {
     ytViews30: yt.views || 0,
     ytMinutes30: yt.estimatedMinutesWatched || 0,
     webSessions30: web.sessions || 0,
-    // TODO(Fan Voice / Audience): emojiOnly, writtenForMe counts
+    emojiOnly: Number(c.emoji_only) || 0,
+    writtenForMe: Number(c.written_for_me) || 0,
   };
 }
 
@@ -210,6 +225,45 @@ async function getWrittenForMe(client, limit = 10) {
   }));
 }
 
+// All (non-excluded) comments, most recent first. The design bundle's own
+// guidance is to ship the whole comment set once and filter/scope it
+// client-side rather than fetch per view — with 656 comments today that's a
+// trivial payload. LIMIT is a safety net, not an expected ceiling; revisit
+// with real pagination if the tracked comment volume grows enough to make
+// this payload heavy (already flagged as an open item in the project doc).
+async function getAllComments(client, limit = 5000) {
+  const { rows } = await client.query(
+    `SELECT platform, body, posted_at, likes, title, manual_tag, sentiment_tag, emoji_only
+     FROM comments
+     WHERE excluded = FALSE
+     ORDER BY posted_at DESC
+     LIMIT $1`,
+    [limit]
+  );
+  return rows.map((r) => ({
+    p: r.platform,
+    text: r.body,
+    date: r.posted_at.toISOString().slice(0, 10),
+    likes: r.likes || 0,
+    tags: tagsForComment(r.manual_tag, r.sentiment_tag),
+    title: r.title || '',
+    emojiOnly: !!r.emoji_only,
+  }));
+}
+
+// Tallies every individual tag across a comment list (a comment with
+// multiple tags counts once per tag, matching the design's `tagCount`
+// shape — an object, not an array, keyed by tag name).
+function tagCountFrom(comments) {
+  const counts = {};
+  for (const c of comments) {
+    for (const t of c.tags) {
+      counts[t] = (counts[t] || 0) + 1;
+    }
+  }
+  return counts;
+}
+
 async function getReleaseHighlight(client) {
   const { rows } = await client.query(
     `SELECT value FROM app_settings WHERE key = 'release_highlight'`
@@ -269,4 +323,53 @@ async function loadRightNowData() {
   }
 }
 
-module.exports = { loadRightNowData };
+// Loads what the "Fan Voice" view needs: totals for "The signal" section,
+// the tag-count breakdown for the sentiment-mix panel, the full comment
+// list (scope/filter/platform/hide-emoji all applied client-side — see
+// components/views/FanVoice.jsx), and the same months/release-highlight
+// fields Right Now uses for its own empty-state MonthBars.
+async function loadFanVoiceData() {
+  const pool = getPool();
+  const client = await pool.connect();
+  try {
+    const [totals, comments, months, release, lastCommentDate] = await Promise.all([
+      getTotals(client),
+      getAllComments(client),
+      getMonths(client),
+      getReleaseHighlight(client),
+      getLastCommentDate(client),
+    ]);
+
+    return {
+      lastCommentDate,
+      totals,
+      tagCount: tagCountFrom(comments),
+      comments,
+      months,
+      releaseMonth: release.releaseMonth,
+      releaseLabel: release.releaseLabel,
+    };
+  } finally {
+    client.release();
+  }
+}
+
+// The sidebar (Shell.jsx) shows "Data pulled <date>" + "Last comment <n>d
+// ago" on every view, not just Right Now — every page loader calls this
+// alongside its own view-specific data so the sidebar stays consistent
+// regardless of which view is open.
+async function getSidebarMeta() {
+  const pool = getPool();
+  const client = await pool.connect();
+  try {
+    const [pull, lastCommentDate] = await Promise.all([
+      getPull(client),
+      getLastCommentDate(client),
+    ]);
+    return { pull, lastCommentDate };
+  } finally {
+    client.release();
+  }
+}
+
+module.exports = { loadRightNowData, loadFanVoiceData, getSidebarMeta };
