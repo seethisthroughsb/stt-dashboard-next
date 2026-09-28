@@ -353,6 +353,34 @@ function tagCountFrom(comments) {
   return counts;
 }
 
+async function getUntaggedCount(client) {
+  const { rows } = await client.query(
+    `SELECT COUNT(*) AS cnt FROM comments
+     WHERE excluded = FALSE AND COALESCE(manual_tag, sentiment_tag) IS NULL`
+  );
+  return Number(rows[0]?.cnt) || 0;
+}
+
+// The design bundle's own Campaigns view flags "best day/time to post" as
+// blocked because its source data was date-only. Ours isn't — both
+// youtube-comments.js and meta-comments.js store the API's full
+// publishedAt/created_time timestamp, not just a date — so this is a real
+// query, not a stub. The one honest caveat: posted_at is UTC and neither API
+// tells us the commenter's own time zone, so the hour is UTC, not local.
+async function getBestPostTime(client) {
+  const { rows } = await client.query(
+    `SELECT to_char(posted_at, 'Dy') AS day, EXTRACT(HOUR FROM posted_at)::int AS hour, COUNT(*) AS cnt
+     FROM comments
+     WHERE excluded = FALSE
+     GROUP BY day, hour
+     ORDER BY cnt DESC
+     LIMIT 1`
+  );
+  const r = rows[0];
+  if (!r) return null;
+  return { day: r.day, hour: Number(r.hour), count: Number(r.cnt) };
+}
+
 async function getReleaseHighlight(client) {
   const { rows } = await client.query(
     `SELECT value FROM app_settings WHERE key = 'release_highlight'`
@@ -498,6 +526,27 @@ async function loadAudienceData() {
   }
 }
 
+// Loads what the "Campaigns" view needs: totals + breakdowns (already
+// fetched for Platforms/Audience) plus the quote pool, the untagged count,
+// and the real best-day/time query described above.
+async function loadCampaignsData() {
+  const pool = getPool();
+  const client = await pool.connect();
+  try {
+    const [totals, breakdowns, writtenForMe, untaggedCount, bestPostTime] = await Promise.all([
+      getTotals(client),
+      getBreakdowns(client),
+      getWrittenForMe(client),
+      getUntaggedCount(client),
+      getBestPostTime(client),
+    ]);
+
+    return { totals, breakdowns, writtenForMe, untaggedCount, bestPostTime };
+  } finally {
+    client.release();
+  }
+}
+
 // The sidebar (Shell.jsx) shows "Data pulled <date>" + "Last comment <n>d
 // ago" on every view, not just Right Now — every page loader calls this
 // alongside its own view-specific data so the sidebar stays consistent
@@ -516,4 +565,11 @@ async function getSidebarMeta() {
   }
 }
 
-module.exports = { loadRightNowData, loadFanVoiceData, loadPlatformsData, loadAudienceData, getSidebarMeta };
+module.exports = {
+  loadRightNowData,
+  loadFanVoiceData,
+  loadPlatformsData,
+  loadAudienceData,
+  loadCampaignsData,
+  getSidebarMeta,
+};
