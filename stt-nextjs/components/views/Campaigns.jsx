@@ -96,10 +96,14 @@ export function Campaigns({ d }) {
         <Answer
           n={4}
           question="Which placement"
-          answer="Playlists, then mobile"
+          answer={
+            ytSrc.length > 0 && devTotal > 0
+              ? `${ytSrc[0][0].replace(/_/g, ' ').toLowerCase().replace(/^./, (c) => c.toUpperCase())}, then ${mobile / devTotal > 0.5 ? 'mobile' : 'desktop'}`
+              : '—'
+          }
           evidence={
             srcTotal > 0 && devTotal > 0
-              ? `${Math.round((ytSrc[0][1] / srcTotal) * 100)}% of views arrive through ${ytSrc[0][0].replace(/_/g, ' ').toLowerCase()} — more than search, suggested video and subscribers combined. ${Math.round((mobile / devTotal) * 100)}% of viewing is on a phone.`
+              ? `${Math.round((ytSrc[0][1] / srcTotal) * 100)}% of views arrive through ${ytSrc[0][0].replace(/_/g, ' ').toLowerCase()} — the single biggest source, ahead of everything else individually. ${Math.round((mobile / devTotal) * 100)}% of viewing is on a phone.`
               : 'Not enough traffic-source data synced yet.'
           }
         >
