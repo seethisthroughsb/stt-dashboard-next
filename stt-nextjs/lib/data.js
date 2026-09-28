@@ -556,6 +556,40 @@ async function loadCampaignsData() {
   }
 }
 
+// Loads what the "Opportunities" view needs: totals + breakdowns + series +
+// months + release month + a tagCount shape carrying just the one field
+// insights.js's data-quality rule reads (`tagCount['Unreviewed']`) — no need
+// to fetch every comment to tally every tag when only that one count feeds
+// a rule. The raw shape is handed to lib/insights.js's deriveInsights() in
+// the view itself (a pure function over this same data, ported from the
+// design bundle's insights.js).
+async function loadOpportunitiesData() {
+  const pool = getPool();
+  const client = await pool.connect();
+  try {
+    const [totals, breakdowns, ytDaily, fbEng, months, release, untaggedCount] = await Promise.all([
+      getTotals(client),
+      getBreakdowns(client),
+      getYtDailySeries(client),
+      getFbEngSeries(client),
+      getMonths(client),
+      getReleaseHighlight(client),
+      getUntaggedCount(client),
+    ]);
+
+    return {
+      totals,
+      breakdowns,
+      series: { ytViews: ytDaily.ytViews, fbEng },
+      months,
+      releaseMonth: release.releaseMonth,
+      tagCount: { Unreviewed: untaggedCount },
+    };
+  } finally {
+    client.release();
+  }
+}
+
 // The sidebar (Shell.jsx) shows "Data pulled <date>" + "Last comment <n>d
 // ago" on every view, not just Right Now — every page loader calls this
 // alongside its own view-specific data so the sidebar stays consistent
@@ -580,5 +614,6 @@ module.exports = {
   loadPlatformsData,
   loadAudienceData,
   loadCampaignsData,
+  loadOpportunitiesData,
   getSidebarMeta,
 };
