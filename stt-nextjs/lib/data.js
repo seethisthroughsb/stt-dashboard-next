@@ -196,40 +196,48 @@ function stripAgePrefix(raw) {
 
 async function getBreakdowns(client) {
   const [ytSrc, ytGeo, ytDev, webConv, webDev, webSrc, ytAge, igDemoAG, igDemoC] = await Promise.all([
+    // ORDER BY value DESC on every one of these — several views read index
+    // [0] as "the top entry" (RightNow's playlist callout, Audience's/
+    // Campaigns' top-country and top-source sentences), so the sort has to
+    // happen here, not be assumed from insertion order.
     client.query(
       `SELECT dimensions->>'insightTrafficSourceType' AS key, value
        FROM analytics_metrics
-       WHERE source = 'youtube' AND report_type = 'Traffic Source (30d)' AND metric = 'views'`
+       WHERE source = 'youtube' AND report_type = 'Traffic Source (30d)' AND metric = 'views'
+       ORDER BY value DESC`
     ),
     client.query(
       `SELECT dimensions->>'country' AS key, value
        FROM analytics_metrics
-       WHERE source = 'youtube' AND report_type = 'Geography (30d)' AND metric = 'views'`
+       WHERE source = 'youtube' AND report_type = 'Geography (30d)' AND metric = 'views'
+       ORDER BY value DESC`
     ),
     client.query(
       `SELECT dimensions->>'deviceType' AS key, value
        FROM analytics_metrics
-       WHERE source = 'youtube' AND report_type = 'Device Type (30d)' AND metric = 'views'`
+       WHERE source = 'youtube' AND report_type = 'Device Type (30d)' AND metric = 'views'
+       ORDER BY value DESC`
     ),
     client.query(
       `SELECT dimensions->>'eventName' AS key, value
        FROM analytics_metrics
-       WHERE source = 'website' AND report_type = 'Conversions (30d)' AND metric = 'eventCount'`
+       WHERE source = 'website' AND report_type = 'Conversions (30d)' AND metric = 'eventCount'
+       ORDER BY value DESC`
     ),
     // deviceCategory, not deviceType — that's YouTube's dimension name above;
     // GA4's own is spelled differently (see website-analytics.js REPORTS).
     client.query(
       `SELECT dimensions->>'deviceCategory' AS key, value
        FROM analytics_metrics
-       WHERE source = 'website' AND report_type = 'Device (30d)' AND metric = 'sessions'`
+       WHERE source = 'website' AND report_type = 'Device (30d)' AND metric = 'sessions'
+       ORDER BY value DESC`
     ),
     client.query(
       `SELECT dimensions->>'sessionDefaultChannelGroup' AS key, value
        FROM analytics_metrics
-       WHERE source = 'website' AND report_type = 'Traffic Source (30d)' AND metric = 'sessions'`
+       WHERE source = 'website' AND report_type = 'Traffic Source (30d)' AND metric = 'sessions'
+       ORDER BY value DESC`
     ),
-    // ORDER BY value DESC — Audience's callout card reads ytAge[0] as "the
-    // top segment", so the sort has to happen here, not in the view.
     client.query(
       `SELECT dimensions->>'ageGroup' AS age_group, dimensions->>'gender' AS gender, value
        FROM analytics_metrics
@@ -244,7 +252,8 @@ async function getBreakdowns(client) {
     client.query(
       `SELECT dimensions->>'country' AS key, value
        FROM analytics_metrics
-       WHERE source = 'meta' AND report_type = 'Instagram Follower Demographics (Country)' AND metric = 'follower_demographics'`
+       WHERE source = 'meta' AND report_type = 'Instagram Follower Demographics (Country)' AND metric = 'follower_demographics'
+       ORDER BY value DESC`
     ),
   ]);
   const toPairs = (res) => toRows(res).filter((r) => r.key).map((r) => [r.key, Number(r.value)]);
