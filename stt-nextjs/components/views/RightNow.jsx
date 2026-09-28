@@ -22,7 +22,7 @@ export function RightNow({ d }) {
   const delta = views.length > 1 ? recent - prior : null;
 
   const days = d.lastCommentDate
-    ? Math.round((Date.now() - new Date(d.lastCommentDate)) / 86400000)
+    ? Math.max(0, Math.round((Date.now() - new Date(d.lastCommentDate)) / 86400000))
     : null;
 
   const addToCart = d.breakdowns.webConv.find((c) => /add_to_cart/i.test(c[0]));

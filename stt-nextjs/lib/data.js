@@ -187,11 +187,21 @@ async function getBreakdowns(client) {
 }
 
 async function getMonths(client) {
+  // Anchored to the most recent comment, not the database server's real
+  // clock. The two can disagree — this app was built in a sandbox pinned to
+  // a fictional "story" date, while comment data and Postgres's own now()
+  // reflect real-world time, so anchoring on now() could window out every
+  // real comment entirely. Anchoring on the data itself is also just more
+  // correct: "last 36 months of activity" should track the data's own
+  // timeline, not an arbitrary server clock.
   const { rows } = await client.query(
     `SELECT to_char(gs, 'YYYY-MM') AS month, COALESCE(c.cnt, 0) AS count
-     FROM generate_series(
-       date_trunc('month', now()) - interval '35 months',
-       date_trunc('month', now()),
+     FROM (
+       SELECT COALESCE(MAX(posted_at), now()) AS latest FROM comments WHERE excluded = FALSE
+     ) AS anchor
+     CROSS JOIN LATERAL generate_series(
+       date_trunc('month', anchor.latest) - interval '35 months',
+       date_trunc('month', anchor.latest),
        interval '1 month'
      ) AS gs
      LEFT JOIN (

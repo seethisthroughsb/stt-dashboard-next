@@ -28,8 +28,15 @@ export function FanVoice({ d }) {
   const [hideEmoji, setHideEmoji] = React.useState(true);
   const [platform, setPlatform] = React.useState('all');
 
+  // Days-ago, not just "within 30 days" — a plain `<= 30` also passes a
+  // *future*-dated comment (diff goes negative), which silently defeats the
+  // 30-day scope. Guard against clock skew between wherever a sync job ran
+  // and wherever this page renders, not just against the ordinary case.
   const pool = scope === 'recent'
-    ? d.comments.filter((c) => (Date.now() - new Date(c.date)) / 86400000 <= 30)
+    ? d.comments.filter((c) => {
+        const daysAgo = (Date.now() - new Date(c.date)) / 86400000;
+        return daysAgo >= 0 && daysAgo <= 30;
+      })
     : d.comments;
 
   let list = pool;
@@ -39,7 +46,7 @@ export function FanVoice({ d }) {
   else if (filter === 'themes') list = list.filter((c) => c.tags.some((t) => THEMES.includes(t)));
   else if (filter === 'critical') list = list.filter((c) => c.tags.includes('Criticism/Negative'));
 
-  const days = d.lastCommentDate ? Math.round((Date.now() - new Date(d.lastCommentDate)) / 86400000) : null;
+  const days = d.lastCommentDate ? Math.max(0, Math.round((Date.now() - new Date(d.lastCommentDate)) / 86400000)) : null;
   const empty = list.length === 0;
   const emojiOnlyPct = d.totals.allComments ? Math.round((d.totals.emojiOnly / d.totals.allComments) * 100) : 0;
 

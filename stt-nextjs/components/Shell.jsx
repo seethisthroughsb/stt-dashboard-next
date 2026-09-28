@@ -91,7 +91,7 @@ const STAMP_LINE = {
 // step — see the project handoff doc's Sync Now section — so this only
 // renders the idle state for now.
 function DataStamp({ pull, lastComment }) {
-  const days = lastComment ? Math.round((Date.now() - new Date(lastComment)) / 86400000) : null;
+  const days = lastComment ? Math.max(0, Math.round((Date.now() - new Date(lastComment)) / 86400000)) : null;
   return (
     <div style={{ padding: 'var(--space-4)', borderTop: '1px solid var(--border-hairline)', display: 'grid', gap: 'var(--space-2)' }}>
       <div style={STAMP_LINE}>Data pulled {pull}</div>
