@@ -390,6 +390,72 @@ async function getBestPostTime(client) {
   return { day: r.day, hour: Number(r.hour), count: Number(r.cnt) };
 }
 
+// Merch queries. Unlike the design bundle's Merch.jsx — which assumes
+// WooCommerce isn't connected yet and renders mostly "Not connected"
+// placeholders — ours already is (see api/sync/merch.js from the earlier
+// migration work), so this view gets real sales/inventory data, not a spec
+// for a future integration.
+async function getMerchSalesSummary(client) {
+  const { rows } = await client.query(
+    `SELECT metric, value FROM analytics_metrics
+     WHERE source = 'merch' AND report_type = 'Merch Sales Summary (30d)'`
+  );
+  const m = Object.fromEntries(rows.map((r) => [r.metric, Number(r.value)]));
+  return {
+    totalSales: m.total_sales || 0,
+    netSales: m.net_sales || 0,
+    totalOrders: m.total_orders || 0,
+    totalItems: m.total_items || 0,
+    avgOrderValue: m.average_order_value || 0,
+  };
+}
+
+async function getMerchSalesSeries(client) {
+  const { rows } = await client.query(
+    `SELECT metric, dimensions->>'day' AS day, value FROM analytics_metrics
+     WHERE source = 'merch' AND report_type = 'Merch Sales Daily Trend (30d)'
+     ORDER BY dimensions->>'day'`
+  );
+  const sales = [];
+  const orders = [];
+  for (const r of rows) {
+    const point = [r.day, Number(r.value)];
+    if (r.metric === 'sales') sales.push(point);
+    else if (r.metric === 'orders') orders.push(point);
+  }
+  return { sales, orders };
+}
+
+async function getTopSellers(client, limit = 10) {
+  const { rows } = await client.query(
+    `SELECT dimensions->>'product' AS product, value FROM analytics_metrics
+     WHERE source = 'merch' AND report_type = 'Top Sellers (30d)' AND metric = 'quantity_sold'
+     ORDER BY value DESC
+     LIMIT $1`,
+    [limit]
+  );
+  return rows.filter((r) => r.product).map((r) => [r.product, Number(r.value)]);
+}
+
+// One row per (product, metric) — stock_quantity and price are separate
+// metric rows sharing the same dims (see merch.js), so group them back into
+// one object per product here rather than in the view.
+async function getInventory(client) {
+  const { rows } = await client.query(
+    `SELECT dimensions->>'product' AS product, dimensions->>'stock_status' AS stock_status, metric, value
+     FROM analytics_metrics
+     WHERE source = 'merch' AND report_type = 'Merch Inventory Snapshot'`
+  );
+  const byProduct = {};
+  for (const r of rows) {
+    if (!r.product) continue;
+    if (!byProduct[r.product]) byProduct[r.product] = { product: r.product, stockStatus: r.stock_status || '' };
+    if (r.metric === 'stock_quantity') byProduct[r.product].stockQuantity = r.value === null ? null : Number(r.value);
+    else if (r.metric === 'price') byProduct[r.product].price = r.value === null ? null : Number(r.value);
+  }
+  return Object.values(byProduct);
+}
+
 async function getReleaseHighlight(client) {
   const { rows } = await client.query(
     `SELECT value FROM app_settings WHERE key = 'release_highlight'`
@@ -590,6 +656,41 @@ async function loadOpportunitiesData() {
   }
 }
 
+// Loads what the "Merch" view needs: the GA4-visible half of the funnel
+// (totals + breakdowns, already fetched elsewhere) plus the WooCommerce
+// side — sales summary, daily trend, top sellers, and inventory (from
+// which the view derives its own "low stock" cut, sorted lowest-first).
+async function loadMerchData() {
+  const pool = getPool();
+  const client = await pool.connect();
+  try {
+    const [totals, breakdowns, salesSummary, salesSeries, topSellers, inventory] = await Promise.all([
+      getTotals(client),
+      getBreakdowns(client),
+      getMerchSalesSummary(client),
+      getMerchSalesSeries(client),
+      getTopSellers(client),
+      getInventory(client),
+    ]);
+
+    const lowStock = inventory
+      .filter((p) => p.stockQuantity != null && p.stockQuantity <= 5)
+      .sort((a, b) => a.stockQuantity - b.stockQuantity);
+
+    return {
+      totals,
+      breakdowns,
+      salesSummary,
+      salesSeries,
+      topSellers,
+      lowStock,
+      hasSales: salesSummary.totalOrders > 0 || salesSummary.totalSales > 0,
+    };
+  } finally {
+    client.release();
+  }
+}
+
 // The sidebar (Shell.jsx) shows "Data pulled <date>" + "Last comment <n>d
 // ago" on every view, not just Right Now — every page loader calls this
 // alongside its own view-specific data so the sidebar stays consistent
@@ -615,5 +716,6 @@ module.exports = {
   loadAudienceData,
   loadCampaignsData,
   loadOpportunitiesData,
+  loadMerchData,
   getSidebarMeta,
 };

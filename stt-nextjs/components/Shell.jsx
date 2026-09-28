@@ -25,7 +25,8 @@ export const VIEWS = [
 ];
 
 // Views that have a real route built so far. Update this as each one ships.
-const BUILT_VIEWS = new Set(['now', 'voice', 'platforms', 'audience', 'campaigns', 'opportunities']);
+// All 7 views now have real routes.
+const BUILT_VIEWS = new Set(['now', 'voice', 'platforms', 'audience', 'campaigns', 'opportunities', 'merch']);
 
 const SIDEBAR_W = 216;
 
