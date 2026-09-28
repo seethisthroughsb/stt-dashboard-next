@@ -123,11 +123,46 @@ async function getTotals(client) {
   };
 }
 
-async function getYtViewsSeries(client) {
+// views + estimatedMinutesWatched share the same source/report_type, so one
+// query gets both series (same pattern as getIgSeries below). ytViews feeds
+// Right Now's chart; ytMins joins it for Platforms' watch-time spark.
+async function getYtDailySeries(client) {
+  const { rows } = await client.query(
+    `SELECT metric, dimensions->>'day' AS day, value
+     FROM analytics_metrics
+     WHERE source = 'youtube' AND report_type = 'Daily Trend (30d)'
+       AND metric IN ('views', 'estimatedMinutesWatched')
+     ORDER BY dimensions->>'day'`
+  );
+  const ytViews = [];
+  const ytMins = [];
+  for (const r of rows) {
+    const point = [r.day, Number(r.value)];
+    if (r.metric === 'views') ytViews.push(point);
+    else if (r.metric === 'estimatedMinutesWatched') ytMins.push(point);
+  }
+  return { ytViews, ytMins };
+}
+
+// Facebook's one daily-trend metric (see meta-insights.js — Page-level
+// engagement is the only FB metric with a day-by-day series; everything
+// else FB is a lifetime total). Peaks in the single digits per data-viz.css's
+// SCALE RULE, so Platforms only ever sparks this, never charts it.
+async function getFbEngSeries(client) {
   const { rows } = await client.query(
     `SELECT dimensions->>'day' AS day, value
      FROM analytics_metrics
-     WHERE source = 'youtube' AND report_type = 'Daily Trend (30d)' AND metric = 'views'
+     WHERE source = 'meta' AND report_type = 'Facebook Daily Trend (30d)' AND metric = 'page_post_engagements'
+     ORDER BY dimensions->>'day'`
+  );
+  return rows.map((r) => [r.day, Number(r.value)]);
+}
+
+async function getWebSessSeries(client) {
+  const { rows } = await client.query(
+    `SELECT dimensions->>'day' AS day, value
+     FROM analytics_metrics
+     WHERE source = 'website' AND report_type = 'Daily Trend (30d)' AND metric = 'sessions'
      ORDER BY dimensions->>'day'`
   );
   return rows.map((r) => [r.day, Number(r.value)]);
@@ -153,7 +188,7 @@ async function getIgSeries(client) {
 }
 
 async function getBreakdowns(client) {
-  const [ytSrc, ytGeo, ytDev, webConv] = await Promise.all([
+  const [ytSrc, ytGeo, ytDev, webConv, webDev, webSrc] = await Promise.all([
     client.query(
       `SELECT dimensions->>'insightTrafficSourceType' AS key, value
        FROM analytics_metrics
@@ -174,6 +209,18 @@ async function getBreakdowns(client) {
        FROM analytics_metrics
        WHERE source = 'website' AND report_type = 'Conversions (30d)' AND metric = 'eventCount'`
     ),
+    // deviceCategory, not deviceType — that's YouTube's dimension name above;
+    // GA4's own is spelled differently (see website-analytics.js REPORTS).
+    client.query(
+      `SELECT dimensions->>'deviceCategory' AS key, value
+       FROM analytics_metrics
+       WHERE source = 'website' AND report_type = 'Device (30d)' AND metric = 'sessions'`
+    ),
+    client.query(
+      `SELECT dimensions->>'sessionDefaultChannelGroup' AS key, value
+       FROM analytics_metrics
+       WHERE source = 'website' AND report_type = 'Traffic Source (30d)' AND metric = 'sessions'`
+    ),
   ]);
   const toPairs = (res) => toRows(res).filter((r) => r.key).map((r) => [r.key, Number(r.value)]);
   return {
@@ -181,8 +228,9 @@ async function getBreakdowns(client) {
     ytGeo: toPairs(ytGeo),
     ytDev: toPairs(ytDev),
     webConv: toPairs(webConv),
+    webDev: toPairs(webDev),
+    webSrc: toPairs(webSrc),
     // TODO(Audience): ytAge, igDemoAG, igDemoC
-    // TODO(Platforms): webDev, webSrc
   };
 }
 
@@ -300,11 +348,11 @@ async function loadRightNowData() {
   const pool = getPool();
   const client = await pool.connect();
   try {
-    const [pull, totals, ytViews, igSeries, breakdowns, months, writtenForMe, release, lastCommentDate] =
+    const [pull, totals, ytDaily, igSeries, breakdowns, months, writtenForMe, release, lastCommentDate] =
       await Promise.all([
         getPull(client),
         getTotals(client),
-        getYtViewsSeries(client),
+        getYtDailySeries(client),
         getIgSeries(client),
         getBreakdowns(client),
         getMonths(client),
@@ -318,7 +366,7 @@ async function loadRightNowData() {
       lastCommentDate,
       totals,
       series: {
-        ytViews,
+        ytViews: ytDaily.ytViews,
         igFoll: igSeries.igFoll,
         igReach: igSeries.igReach,
       },
@@ -364,6 +412,41 @@ async function loadFanVoiceData() {
   }
 }
 
+// Loads what the "Platforms" view needs: per-platform totals plus every
+// daily series and breakdown across YouTube/Meta/Website. No comment or
+// month data — this view is purely the analytics side, so `pull`/
+// `lastCommentDate` for the sidebar come from getSidebarMeta() instead (see
+// app/platforms/page.js), same as Fan Voice's page does.
+async function loadPlatformsData() {
+  const pool = getPool();
+  const client = await pool.connect();
+  try {
+    const [totals, ytDaily, igSeries, fbEng, webSess, breakdowns] = await Promise.all([
+      getTotals(client),
+      getYtDailySeries(client),
+      getIgSeries(client),
+      getFbEngSeries(client),
+      getWebSessSeries(client),
+      getBreakdowns(client),
+    ]);
+
+    return {
+      totals,
+      series: {
+        ytViews: ytDaily.ytViews,
+        ytMins: ytDaily.ytMins,
+        fbEng,
+        igFoll: igSeries.igFoll,
+        igReach: igSeries.igReach,
+        webSess,
+      },
+      breakdowns,
+    };
+  } finally {
+    client.release();
+  }
+}
+
 // The sidebar (Shell.jsx) shows "Data pulled <date>" + "Last comment <n>d
 // ago" on every view, not just Right Now — every page loader calls this
 // alongside its own view-specific data so the sidebar stays consistent
@@ -382,4 +465,4 @@ async function getSidebarMeta() {
   }
 }
 
-module.exports = { loadRightNowData, loadFanVoiceData, getSidebarMeta };
+module.exports = { loadRightNowData, loadFanVoiceData, loadPlatformsData, getSidebarMeta };
