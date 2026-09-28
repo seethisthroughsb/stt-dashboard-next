@@ -1,0 +1,641 @@
+/* ============================================================================
+   SEE THIS THROUGH — design tokens, flattened.
+   Generated 17 Sep 2026 from the design system's tokens/ directory.
+   This is the ONE file to bring into the Apps Script web app. It is the same
+   CSS the design reference runs on — no build step, no preprocessor, no
+   framework. Plain custom properties.
+
+   Order matters: colors before typography before base. Do not reorder.
+
+   FONTS
+   -----
+   Roboto loads from Google Fonts (link below — keep it in <head>, not here).
+   Sackers Gothic Medium is a LICENSED face and must be self-hosted. Apps Script
+   cannot serve binary files, so pick one:
+     a) base64 the .otf into the @font-face src (assets/fonts/ in this bundle),
+     b) host it on the band's own domain / a CDN and point src at that URL.
+   It is CAPS-ONLY and ships ONE weight (500). Never set lowercase in it and
+   never request a bold — the browser will synthesise both and it looks wrong.
+   The logotype is outlined artwork, NOT type: use assets/logos/*.svg.
+
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+   ============================================================================ */
+
+
+/* ==== tokens/colors.css ======================================================== */
+/* Colors — verbatim from "See This Through / Web Color Guide" + logo guide p.8.
+   Black does not exist in this system: COAL (95% grey) stands in for black everywhere. */
+:root {
+  /* ---- Base palette (the only literal hexes in the system) ---- */
+  --stt-white: #FFFFFF;
+  --stt-ice: #E2F2F0;
+  --stt-gold: #C99E54;
+  --stt-rust: #D8372B;
+  --stt-rust-hover: #961F16;
+  --stt-smoke: #464646;
+  --stt-ash: #212121;
+  --stt-coal: #101111;
+
+  /* ---- Alpha ramps, derived from the base palette ---- */
+  --stt-ice-a04: rgba(226, 242, 240, 0.04);
+  --stt-ice-a08: rgba(226, 242, 240, 0.08);
+  --stt-ice-a12: rgba(226, 242, 240, 0.12);
+  --stt-ice-a24: rgba(226, 242, 240, 0.24);
+  --stt-ice-a56: rgba(226, 242, 240, 0.56);
+  --stt-ice-a72: rgba(226, 242, 240, 0.72);
+  --stt-coal-a08: rgba(16, 17, 17, 0.08);
+  --stt-coal-a16: rgba(16, 17, 17, 0.16);
+  --stt-coal-a56: rgba(16, 17, 17, 0.56);
+  --stt-coal-a88: rgba(16, 17, 17, 0.88);
+  --stt-rust-a16: rgba(216, 55, 43, 0.16);
+  --stt-rust-a32: rgba(216, 55, 43, 0.32);
+  --stt-gold-a16: rgba(201, 158, 84, 0.16);
+
+  /* ---- Semantic aliases: DARK is the default mode ---- */
+  --surface-page: var(--stt-coal);
+  --surface-card: var(--stt-ash);
+  --surface-raised: var(--stt-smoke);
+  --surface-sunken: var(--stt-coal);
+  --surface-inverse: var(--stt-ice);
+  --surface-hover: var(--stt-ice-a08);
+  --surface-active: var(--stt-ice-a12);
+  --surface-scrim: var(--stt-coal-a88);
+
+  --text-heading: var(--stt-ice);
+  --text-body: var(--stt-ice-a72);
+  --text-muted: var(--stt-ice-a56);
+  --text-disabled: var(--stt-ice-a24);
+  --text-inverse: var(--stt-coal);
+  --text-accent: var(--stt-gold);
+  --text-link: var(--stt-ice);
+  --text-link-hover: var(--stt-rust);
+  --text-on-rust: var(--stt-white);
+  --text-on-gold: var(--stt-coal);
+
+  --border-hairline: var(--stt-ice-a12);
+  --border-default: var(--stt-smoke);
+  --border-strong: var(--stt-ice-a24);
+  --border-focus: var(--stt-ice);
+  --border-inverse: var(--stt-coal-a16);
+
+  --action-primary: var(--stt-rust);
+  --action-primary-hover: var(--stt-rust-hover);
+  --action-primary-text: var(--stt-white);
+  --action-secondary-border: var(--stt-ice-a24);
+  --action-secondary-text: var(--stt-ice);
+
+  --accent: var(--stt-gold);
+  --accent-soft: var(--stt-gold-a16);
+  --danger: var(--stt-rust);
+  --focus-ring: var(--stt-gold);
+
+  /* ---- Bridge: the brand design system's own token names (tokens.json v1).
+     Every hex in that file already matches the base palette above, so these are
+     pure aliases — anything authored against the design system drops straight in.
+     Its `accent` is Rust (action), its `accent-secondary` is Gold; in this kit the
+     bare `--accent` stays Gold to keep the existing components' meaning intact. ---- */
+  --surface: var(--stt-coal);
+  --surface-alt: var(--stt-ash);
+  --ink: var(--stt-ice);
+  --ink-strong: var(--stt-white);
+  --divider: var(--stt-smoke);
+  --accent-hover: var(--stt-rust-hover);
+  --accent-secondary: var(--stt-gold);
+}
+
+/* ---- LIGHT mode. Secondary. Ice-on-white, never pure-white-on-pure-black.
+   Applied with [data-stt-theme="light"] on any wrapper. ---- */
+[data-stt-theme="light"] {
+  --surface-page: var(--stt-ice);
+  --surface-card: var(--stt-white);
+  --surface-raised: var(--stt-white);
+  --surface-sunken: var(--stt-ice);
+  --surface-inverse: var(--stt-coal);
+  --surface-hover: var(--stt-coal-a08);
+  --surface-active: var(--stt-coal-a16);
+  --surface-scrim: var(--stt-coal-a56);
+
+  --text-heading: var(--stt-coal);
+  --text-body: var(--stt-ash);
+  --text-muted: var(--stt-smoke);
+  --text-disabled: var(--stt-coal-a16);
+  --text-inverse: var(--stt-ice);
+  --text-accent: #8A6520;
+  --text-link: var(--stt-coal);
+  --text-link-hover: var(--stt-rust-hover);
+
+  --border-hairline: var(--stt-coal-a16);
+  --border-default: var(--stt-smoke);
+  --border-strong: var(--stt-ash);
+  --border-focus: var(--stt-coal);
+
+  --action-secondary-border: var(--stt-ash);
+  --action-secondary-text: var(--stt-coal);
+  --focus-ring: var(--stt-rust);
+}
+
+/* ==== tokens/typography.css ==================================================== */
+/* Typography — aligned to the brand design system (STT tokens.json, v1).
+   SACKERS GOTHIC MEDIUM — display / headings / labels. Caps-only, one weight (500).
+   ROBOTO — everything you actually read, plus all numeric data. Sentence case.
+   There is no third face: the mono role now resolves to Roboto with tabular figures,
+   so metadata and timecodes still line up in columns. */
+:root {
+  --font-display: "Sackers Gothic Medium", Roboto, sans-serif;
+  --font-text: Roboto, system-ui, sans-serif;
+  --font-mono: Roboto, system-ui, sans-serif;
+
+  --weight-light: 300;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 500;   /* display face has no bold — do not synthesise */
+  --weight-bold: 700;       /* Roboto only */
+
+  /* Type scale — 1.333 (perfect fourth). Aggressive jumps, no timid steps.
+     The brand system's 48/32/22 h1-h3 are its stated "starting scale, not
+     brand-specified"; this scale is the one validated against the real dashboard
+     and deck layouts, so it stays. --size-3xl (44) ≈ its h1, --size-2xl (32) = its h2. */
+  --size-2xs: 11px;
+  --size-xs: 12px;
+  --size-sm: 14px;
+  --size-md: 16px;
+  --size-lg: 18px;
+  --size-xl: 24px;
+  --size-2xl: 32px;
+  --size-3xl: 44px;
+  --size-4xl: 60px;
+  --size-5xl: 80px;
+  --size-6xl: 112px;
+
+  --leading-flat: 1.0;      /* caps-only face: no descenders to clear */
+  --leading-tight: 1.1;
+  --leading-snug: 1.3;
+  --leading-normal: 1.55;
+  --leading-loose: 1.7;
+
+  --tracking-display: 0.02em;   /* engraved caps need air, not negative tracking */
+  --tracking-normal: 0em;
+  --tracking-wide: 0.06em;
+  --tracking-label: 0.14em;     /* eyebrows, now set in the display face */
+
+  /* Composed roles */
+  --type-hero: var(--weight-medium) var(--size-6xl)/var(--leading-flat) var(--font-display);
+  --type-h1: var(--weight-medium) var(--size-4xl)/var(--leading-tight) var(--font-display);
+  --type-h2: var(--weight-medium) var(--size-3xl)/var(--leading-tight) var(--font-display);
+  --type-h3: var(--weight-medium) var(--size-2xl)/var(--leading-snug) var(--font-display);
+  --type-h4: var(--weight-medium) var(--size-lg)/var(--leading-snug) var(--font-display);
+  --type-body-lg: var(--weight-regular) var(--size-lg)/var(--leading-normal) var(--font-text);
+  --type-body: var(--weight-regular) var(--size-md)/var(--leading-normal) var(--font-text);
+  --type-body-sm: var(--weight-regular) var(--size-sm)/var(--leading-normal) var(--font-text);
+  --type-label: var(--weight-medium) var(--size-xs)/1.2 var(--font-display);
+  --type-label-sm: var(--weight-medium) var(--size-2xs)/1.2 var(--font-display);
+  --type-button: var(--weight-medium) var(--size-sm)/1 var(--font-display);
+}
+
+/* Numbers live in Roboto everywhere, and always line up. */
+table, [data-numeric], .stt-numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==== tokens/spacing.css ======================================================= */
+/* Spacing — 4px base, doubling at the top end. */
+:root {
+  --space-0: 0px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+  --space-10: 128px;
+  --space-11: 192px;
+
+  /* Layout */
+  --gutter: var(--space-5);
+  --page-pad-x: var(--space-5);
+  --page-pad-x-lg: var(--space-8);
+  --section-y: var(--space-9);
+  --measure: 68ch;          /* max reading width */
+  --container: 1280px;
+  --container-narrow: 880px;
+
+  /* Logo clearspace — logo guide p.5: 1/4 of logo height, all sides. */
+  --logo-clearspace: 0.25;
+
+  /* Control heights */
+  --control-sm: 32px;
+  --control-md: 40px;
+  --control-lg: 48px;
+  --touch-min: 44px;
+}
+
+/* ==== tokens/borders.css ======================================================= */
+/* Borders, corners, shadow, and the corner-cut motif.
+   Corners are SQUARE. The mark is built from hard diagonals and right angles;
+   rounding it would contradict "Modern. Powerful. Stable."
+   2px is the maximum radius anywhere in this system. */
+:root {
+  --radius-none: 0px;
+  --radius-xs: 2px;
+  --radius-pill: 999px;   /* switch tracks and nothing else */
+
+  --stroke-hairline: 1px;
+  --stroke-default: 1px;
+  --stroke-strong: 2px;
+  --stroke-heavy: 3px;
+
+  /* No soft drop shadows. Elevation reads as a hard offset plane or a lift in surface value. */
+  --shadow-none: none;
+  --shadow-hard: 6px 6px 0 var(--stt-coal);
+  --shadow-hard-rust: 6px 6px 0 var(--stt-rust);
+  --shadow-overlay: 0 24px 64px rgba(16, 17, 17, 0.72);
+  --shadow-inset-top: inset 0 1px 0 var(--stt-ice-a08);
+
+  /* The STT cut corner — a 45° notch echoing the mark's diagonals.
+     Apply as clip-path on cards, media, and primary buttons. Bottom-right only. */
+  --cut-sm: 10px;
+  --cut-md: 18px;
+  --cut-lg: 32px;
+  --clip-cut-sm: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+  --clip-cut-md: polygon(0 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
+  --clip-cut-lg: polygon(0 0, 100% 0, 100% calc(100% - 32px), calc(100% - 32px) 100%, 0 100%);
+  /* Opposing notch — top-left + bottom-right, for hero media and feature cards. */
+  --clip-cut-both: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
+}
+
+/* ==== tokens/motion.css ======================================================== */
+/* Motion. Mechanical, not bouncy. Things snap; they never spring or wobble. */
+:root {
+  --dur-instant: 80ms;
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 400ms;
+  --dur-reveal: 640ms;
+
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.6, 0, 1, 0.4);
+  --ease-inout: cubic-bezier(0.6, 0, 0.2, 1);
+  --ease-linear: linear;
+
+  --transition-control: background-color var(--dur-fast) var(--ease-out),
+                        border-color var(--dur-fast) var(--ease-out),
+                        color var(--dur-fast) var(--ease-out),
+                        transform var(--dur-fast) var(--ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-instant: 0ms; --dur-fast: 0ms; --dur-base: 0ms;
+    --dur-slow: 0ms; --dur-reveal: 0ms;
+  }
+}
+
+/* ==== tokens/data-viz.css ====================================================== */
+/* Data visualization.
+   Designed against the real STT Social Listening data, not generic chart defaults.
+
+   ─────────────────────────────────────────────────────────────────────────────
+   WHY THIS PALETTE HAS FIVE TREATMENTS AND NOT TWELVE COLORS
+
+   The tagger emits 12 labels. The first version of this file gave each tier its own
+   hue and it failed on contact with arithmetic: five distinguishable categorical
+   colors DO NOT EXIST inside a three-color brand palette on a near-black ground.
+   Every attempt produced one of two failures — hues that collided with RUST (the
+   "banked heat" conflict color measured 1.09:1 against it), or hues separated by
+   less than 1.4:1 in luminance, which is indistinguishable for colorblind viewers
+   and nearly so for everyone else.
+
+   The data says not to try. Tag counts across 552 comments, all ten years:
+
+       General Praise          456        ← 83% of every tag applied
+       Superfan/Loyalty         58
+       Unreviewed               56
+       Fan Request              42
+       Life-Moment Tie-in       27
+       Written for Me            9        ← the signal the product exists to find
+       Hope/Redemption           8
+       Criticism/Negative        7
+       Catharsis/Release         4
+       Internal Conflict         2
+       Isolation/Loneliness      2
+
+   The five emotional themes total 43 tags. They will never be five meaningful
+   wedges of a chart. Coloring them as though they were is a fiction that costs
+   the identity its one accent color.
+
+   So the palette encodes SIGNAL VALUE, and identity comes from labels:
+
+       1  RUST                  Written for Me. Nothing else, ever.
+       2  GOLD                  Any emotional theme. The label says which.
+       3  ICE neutral ramp      Engagement signals — volume, not meaning.
+       4  Hatched               Criticism/Negative. Pattern, not hue.
+       5  Hairline outline      Processing states — the absence of a sentiment.
+
+   Five treatments, all ≥3:1 against the ground, all separable without color
+   vision. Restraint is the feature, not a compromise.
+   ─────────────────────────────────────────────────────────────────────────────
+
+   Verified contrast, every shipped value against COAL #101111:
+     RUST          #d8372b    4.05:1
+     GOLD          #c99e54    7.66:1
+     ICE a40       #646b6a    3.47:1
+     ICE a64       #96a1a0    7.12:1
+     ICE a88       #c9d7d5   12.76:1
+     hatch a72     #a7b3b2    8.77:1
+   Neutral ramp steps are 2.05:1 and 1.79:1 apart. RUST sits at hue 30, GOLD at 75 —
+   red against amber, distinct in hue as well as value. */
+
+:root {
+  /* ---- Tier 1 · The hero signal ---------------------------------------- */
+  /* 9 of 552 comments. One RUST mark on screen means something was found.
+     Do not use RUST for any other series, category, or state in a chart. */
+  --viz-written-for-me: var(--stt-rust);
+
+  /* ---- Tier 2 · Emotional themes --------------------------------------- */
+  /* ALL five themes share GOLD. Isolation, Internal Conflict, Catharsis,
+     Hope and Life-Moment are told apart by their LABEL, not their fill. */
+  --viz-theme: var(--stt-gold);
+
+  /* Only when a theme breakdown is genuinely unavoidable — max 3 steps, and
+     always with labels. Derived from GOLD's own hue. */
+  --viz-theme-lo: oklch(55% 0.075 72);   /* #8d6a3e — 3.84:1 */
+  --viz-theme-hi: oklch(87% 0.070 80);   /* #edd0a0 — 12.73:1 */
+
+  /* ---- Tier 3 · Engagement signals ------------------------------------- */
+  /* Neutral by design. General Praise is 83% of all tags — given a hue, every
+     chart becomes one color wearing a legend. Most common = most recessive. */
+  --viz-general-praise: rgba(226, 242, 240, 0.40);   /* 3.47:1  */
+  --viz-fan-request: rgba(226, 242, 240, 0.64);      /* 7.12:1  */
+  --viz-superfan: rgba(226, 242, 240, 0.88);         /* 12.76:1 */
+
+  /* ---- Tier 4 · Negative ----------------------------------------------- */
+  /* Pattern, not hue. A second red would destroy rule 1 — the earlier
+     RUST-HOVER version measured 1.80:1 against RUST and read as the same color.
+     Hatching also survives grayscale printing and color blindness.
+     Apply with .viz-hatch-criticism. */
+  --viz-criticism-stripe: rgba(226, 242, 240, 0.72);
+  --viz-criticism-border: rgba(226, 242, 240, 0.40);
+
+  /* ---- Tier 5 · Processing states -------------------------------------- */
+  /* Not sentiments — the absence of one. No fill. Told apart by dash pattern
+     and an interior mark, never by border alpha alone. */
+  --viz-state-border: rgba(226, 242, 240, 0.40);     /* 3.47:1 */
+  --viz-unreviewed-dash: none;                        /* solid  = queued  */
+  --viz-no-match-dash: 3 2;                           /* dashed = ran, no match */
+
+  /* ---- Chart chrome ---------------------------------------------------- */
+  --viz-axis: var(--stt-ice-a24);
+  --viz-grid: var(--stt-ice-a08);
+  --viz-grid-zero: var(--stt-ice-a24);
+  --viz-label: var(--text-muted);
+  --viz-plot-bg: transparent;             /* never a filled plot area */
+
+  /* Trend series. Primary is ICE — a trend line is information, not an action.
+     RUST is reserved for calling out a single point. */
+  --viz-series-1: var(--stt-ice);
+  --viz-series-2: var(--stt-gold);
+  --viz-series-3: rgba(226, 242, 240, 0.56);
+  --viz-stroke-width: 2px;
+  --viz-stroke-width-thin: 1.5px;
+  --viz-point-size: 4px;
+  --viz-area-fill: var(--stt-ice-a08);    /* alpha only, no gradient */
+
+  /* Previous period. Always dashed, always receded. */
+  --viz-compare: var(--stt-ice-a24);
+  --viz-compare-dash: 3 3;
+
+  /* Bars */
+  --viz-bar-gap: var(--space-1);
+  --viz-bar-track: var(--stt-ice-a04);
+
+  /* Tooltip — inverted, so it reads over any series */
+  --viz-tooltip-bg: var(--surface-inverse);
+  --viz-tooltip-text: var(--text-inverse);
+
+  /* Sparklines, for series too small to deserve an axis */
+  --viz-spark-height: 28px;
+  --viz-spark-stroke: rgba(226, 242, 240, 0.56);
+
+  /* Trend deltas. GOLD up, hatch-neutral down — never the green/red of every
+     SaaS dashboard, and never RUST, which belongs to tier 1. */
+  --viz-delta-up: var(--stt-gold);
+  --viz-delta-down: rgba(226, 242, 240, 0.56);
+  --viz-delta-flat: var(--text-muted);
+}
+
+/* Criticism/Negative — the only patterned fill in the system. */
+.viz-hatch-criticism {
+  background-color: transparent;
+  background-image: repeating-linear-gradient(
+    135deg,
+    var(--viz-criticism-stripe) 0 2px,
+    transparent 2px 5px
+  );
+  border: 1px solid var(--viz-criticism-border);
+}
+
+/* "No data" / untagged regions. Reads as deliberately empty, not broken. */
+.viz-empty-hatch {
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0 6px,
+    var(--stt-ice-a04) 6px 12px
+  );
+}
+
+/* ---------------------------------------------------------------------------
+   SCALE RULE — a constraint, not a token.
+
+   Real per-day ranges in the current data:
+     YouTube views          89 → 239
+     Website sessions        3 → 38
+     Instagram reach         0 → 65
+     Facebook engagements    0 → 3      ← three orders of magnitude below YouTube
+
+   These cannot share an axis, and they cannot sit in identical metric cards:
+   Facebook would read as broken instrumentation rather than a small number.
+
+     • Meaningful range        → full chart, axis, gridlines
+     • Under ~20 at peak       → sparkline at --viz-spark-height, no axis
+     • Under ~5 at peak        → a number and a direction. No chart at all.
+
+   Never normalize separate platforms onto a shared 0–100 axis. That invents a
+   relationship the data does not have.
+   --------------------------------------------------------------------------- */
+
+/* ---------------------------------------------------------------------------
+   TIME HORIZON RULE
+
+   The two halves of the data have different horizons and must not share one control:
+     Analytics tabs   → rolling 30-day snapshots, one per daily pull
+     Comment tabs     → April 2016 → present, ten years, release-driven
+
+   Comment volume is entirely release-driven. Tell Me's April 2026 launch produced
+   30 comments; May 24, June 6, July 1, then nothing. Recent-first is the default,
+   but an empty recent window is the NORMAL state between releases — design it as a
+   real view, never as a failure, and always pair it with the last active period so
+   the screen is never blank.
+
+   Also: filter to a single Date Pulled before charting anything from the analytics
+   tabs. They stack overlapping 30-day snapshots, so a naive read draws the same day
+   up to eleven times.
+   --------------------------------------------------------------------------- */
+
+/* ==== tokens/base.css ========================================================== */
+/* Minimal resets + the two or three global behaviours the brand depends on. */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--surface-page);
+  color: var(--text-body);
+  font: var(--type-body);
+  -webkit-font-smoothing: antialiased;
+  text-wrap: pretty;
+}
+
+h1, h2, h3, h4 {
+  margin: 0;
+  color: var(--text-heading);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-display);
+}
+h1 { font: var(--type-h1); }
+h2 { font: var(--type-h2); }
+h3 { font: var(--type-h3); }
+h4 { font: var(--type-h4); letter-spacing: var(--tracking-wide); }
+p { margin: 0 0 var(--space-4); max-width: var(--measure); }
+
+a {
+  color: var(--text-link);
+  text-decoration: none;
+  border-bottom: var(--stroke-default) solid var(--stt-rust);
+  transition: color var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out);
+}
+a:hover { color: var(--text-link-hover); border-bottom-color: var(--stt-rust-hover); }
+
+:focus-visible {
+  outline: var(--stroke-strong) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+::selection { background: var(--stt-rust); color: var(--stt-white); }
+
+/* Utility: the mono eyebrow label used across every surface. */
+.stt-eyebrow {
+  font: var(--type-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+/* Utility: the corner cut. */
+.stt-cut { clip-path: var(--clip-cut-md); }
+.stt-cut-sm { clip-path: var(--clip-cut-sm); }
+.stt-cut-lg { clip-path: var(--clip-cut-lg); }
+
+/* ============================================================================
+   ADDED FOR THE NEXT.JS PORT (not in the original stt-tokens.css bundle)
+
+   The reference prototype used a JS `useNarrow()` width hook for every
+   responsive rule, because it shipped with no stylesheet. START-HERE.md §
+   "What's changed for Vercel" explicitly asks for real media queries instead
+   (avoids SSR/hydration mismatch). Everything below re-implements the same
+   breakpoint rules (760px content breakpoint, 860px sidebar breakpoint) as
+   plain CSS so layout never depends on a client-side width measurement.
+   ============================================================================ */
+
+@keyframes stt-spin { to { transform: rotate(360deg); } }
+
+/* ---- Grid: mirrors Shell.jsx's <Grid> column-count logic ---- */
+.stt-grid { display: grid; gap: var(--space-4); }
+
+/* n <= 3: same column count at every width down to the 760 collapse. */
+.stt-grid-fixed { grid-template-columns: repeat(var(--stt-grid-n), minmax(0, 1fr)); }
+@media (max-width: 759px) {
+  .stt-grid-fixed { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* n === 4: 4-across desktop, a deliberate 2x2 between 760 and 1040 (the
+   auto-fit trap documented in README.md's "two layout traps"), 1 on a phone. */
+.stt-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 1039px) {
+  .stt-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 759px) {
+  .stt-grid-4 { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* n >= 5: 3-across desktop, 2 mid, 1 phone. */
+.stt-grid-many { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 1039px) {
+  .stt-grid-many { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 759px) {
+  .stt-grid-many { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* `min` prop: genuinely variable-length rows opt into auto-fit. */
+.stt-grid-auto { grid-template-columns: repeat(auto-fit, minmax(var(--stt-grid-min, 200px), 1fr)); }
+
+/* ---- SplitRow: content-major two-column row, flexible ratio tracks ---- */
+.stt-split-row {
+  display: grid;
+  grid-template-columns: minmax(0, var(--split-a, 2fr)) minmax(0, var(--split-b, 1fr));
+  gap: var(--space-5);
+  align-items: start;
+}
+@media (max-width: 759px) {
+  .stt-split-row { grid-template-columns: minmax(0, 1fr); }
+}
+/* Fan Voice's stated mobile reorder: side panel drops below the list. */
+.stt-split-row[data-reorder="true"] > :last-child { order: 2; }
+
+/* ---- Shell: sidebar collapses to a drawer at 860px ---- */
+.stt-sidebar-desktop { display: flex; }
+.stt-header-menu-btn { display: none; }
+@media (max-width: 859px) {
+  .stt-sidebar-desktop { display: none; }
+  /* !important: this element has no conflicting inline display, but kept
+     consistent with the other two rules below for the same reason they
+     need it — see next comment. */
+  .stt-header-menu-btn { display: grid !important; place-items: center; }
+}
+
+/* Export is hidden below 760; Sync Now survives, compact/icon-only.
+   !important is required here: Button.jsx (components/Button.jsx) always
+   sets an inline `display: 'inline-flex'`, and inline styles beat a plain
+   class rule regardless of specificity — only !important in the stylesheet
+   can still override it. */
+.stt-sync-btn-label { display: inline; }
+@media (max-width: 759px) {
+  .stt-header-export { display: none !important; }
+  .stt-sync-btn-label { display: none; }
+  .stt-sync-btn { width: 40px; padding: 0 !important; }
+}
+
+/* DataStamp's "Read only on mobile" line only applies under 760. */
+.stt-readonly-note { display: none; }
+@media (max-width: 759px) {
+  .stt-readonly-note { display: block; }
+}
+
+/* "Where the views come from" style ad-hoc responsive column groups. */
+.stt-auto-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-6); }
+
+/* ---- Font loading override: next/font (layout.js) generates its own scoped
+   CSS variables for both faces and applies them via <html> className. Point
+   the design system's font-role tokens at those variables instead of the
+   literal family names / the deleted @font-face block above. Must come after
+   the flattened tokens block so it wins (same specificity, source order). ---- */
+:root {
+  --font-display: var(--font-sackers), var(--font-roboto), sans-serif;
+  --font-text: var(--font-roboto), system-ui, sans-serif;
+  --font-mono: var(--font-roboto), system-ui, sans-serif;
+}
+
+html, body { height: 100%; }
+#__next, body > div:first-child { min-height: 100%; }
