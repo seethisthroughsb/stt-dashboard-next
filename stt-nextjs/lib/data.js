@@ -187,8 +187,16 @@ async function getIgSeries(client) {
   return { igFoll, igReach };
 }
 
+// YouTube Analytics' own ageGroup dimension values come back prefixed
+// ("ageGroup25-34"), unlike the design bundle's clean "25-34" — strip the
+// prefix defensively either way so this works whether or not the API
+// already reports it bare.
+function stripAgePrefix(raw) {
+  return String(raw || '').replace(/^ageGroup/i, '');
+}
+
 async function getBreakdowns(client) {
-  const [ytSrc, ytGeo, ytDev, webConv, webDev, webSrc] = await Promise.all([
+  const [ytSrc, ytGeo, ytDev, webConv, webDev, webSrc, ytAge, igDemoAG, igDemoC] = await Promise.all([
     client.query(
       `SELECT dimensions->>'insightTrafficSourceType' AS key, value
        FROM analytics_metrics
@@ -221,6 +229,24 @@ async function getBreakdowns(client) {
        FROM analytics_metrics
        WHERE source = 'website' AND report_type = 'Traffic Source (30d)' AND metric = 'sessions'`
     ),
+    // ORDER BY value DESC — Audience's callout card reads ytAge[0] as "the
+    // top segment", so the sort has to happen here, not in the view.
+    client.query(
+      `SELECT dimensions->>'ageGroup' AS age_group, dimensions->>'gender' AS gender, value
+       FROM analytics_metrics
+       WHERE source = 'youtube' AND report_type = 'Age/Gender (30d)' AND metric = 'viewerPercentage'
+       ORDER BY value DESC`
+    ),
+    client.query(
+      `SELECT dimensions->>'age' AS age, dimensions->>'gender' AS gender, value
+       FROM analytics_metrics
+       WHERE source = 'meta' AND report_type = 'Instagram Follower Demographics (Age/Gender)' AND metric = 'follower_demographics'`
+    ),
+    client.query(
+      `SELECT dimensions->>'country' AS key, value
+       FROM analytics_metrics
+       WHERE source = 'meta' AND report_type = 'Instagram Follower Demographics (Country)' AND metric = 'follower_demographics'`
+    ),
   ]);
   const toPairs = (res) => toRows(res).filter((r) => r.key).map((r) => [r.key, Number(r.value)]);
   return {
@@ -230,7 +256,13 @@ async function getBreakdowns(client) {
     webConv: toPairs(webConv),
     webDev: toPairs(webDev),
     webSrc: toPairs(webSrc),
-    // TODO(Audience): ytAge, igDemoAG, igDemoC
+    ytAge: toRows(ytAge)
+      .filter((r) => r.age_group && r.gender)
+      .map((r) => [stripAgePrefix(r.age_group), r.gender, Number(r.value)]),
+    igDemoAG: toRows(igDemoAG)
+      .filter((r) => r.age && r.gender)
+      .map((r) => [r.age, r.gender, Number(r.value)]),
+    igDemoC: toPairs(igDemoC),
   };
 }
 
@@ -447,6 +479,26 @@ async function loadPlatformsData() {
   }
 }
 
+// Loads what the "Audience" view needs: comment totals (for the "Reach vs
+// engagement" section) plus the geography/age-gender breakdowns for both
+// YouTube and Instagram. No series or comment list, so — like Platforms —
+// `pull`/`lastCommentDate` for the sidebar come from getSidebarMeta()
+// instead (see app/audience/page.js).
+async function loadAudienceData() {
+  const pool = getPool();
+  const client = await pool.connect();
+  try {
+    const [totals, breakdowns] = await Promise.all([
+      getTotals(client),
+      getBreakdowns(client),
+    ]);
+
+    return { totals, breakdowns };
+  } finally {
+    client.release();
+  }
+}
+
 // The sidebar (Shell.jsx) shows "Data pulled <date>" + "Last comment <n>d
 // ago" on every view, not just Right Now — every page loader calls this
 // alongside its own view-specific data so the sidebar stays consistent
@@ -465,4 +517,4 @@ async function getSidebarMeta() {
   }
 }
 
-module.exports = { loadRightNowData, loadFanVoiceData, loadPlatformsData, getSidebarMeta };
+module.exports = { loadRightNowData, loadFanVoiceData, loadPlatformsData, loadAudienceData, getSidebarMeta };
