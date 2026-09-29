@@ -128,7 +128,7 @@ export function Campaigns({ d }) {
         label="Approved quote pool"
         note={`${t.writtenForMe} candidates`}
         action={
-          <Button variant="secondary" size="sm" disabled title="Export — coming in a later step">
+          <Button as="a" href="/api/export/campaigns-pool" variant="secondary" size="sm" title="Download the approved quote pool as CSV">
             <Icon name="download" size={14} /> Export pool
           </Button>
         }

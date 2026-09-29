@@ -271,7 +271,11 @@ export function Shell({ view, pull, lastComment, children }) {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flex: 'none' }}>
             <SyncButton status={sync.status} onClick={runSync} />
-            <Button variant="secondary" size="sm" disabled className="stt-header-export" title="Export — coming in a later step">
+            <Button
+              as="a" href={`/api/export/${view}`}
+              variant="secondary" size="sm" className="stt-header-export"
+              title="Download this view as CSV"
+            >
               <Icon name="download" size={14} /> Export
             </Button>
             <Button variant="ghost" size="sm" aria-label="Log out" title="Log out" onClick={logout}>
