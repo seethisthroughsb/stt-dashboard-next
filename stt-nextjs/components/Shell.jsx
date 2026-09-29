@@ -72,11 +72,17 @@ function NavItem({ view, active }) {
   );
   const style = {
     display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
-    width: '100%', minHeight: 'var(--touch-min)',
+    width: '100%', height: 40, boxSizing: 'border-box',
     padding: '0 var(--space-4)',
     background: active ? 'var(--surface-active)' : hover && !disabled ? 'var(--surface-hover)' : 'transparent',
     border: 0,
     borderLeft: '3px solid ' + (active ? 'var(--stt-rust)' : 'transparent'),
+    // A hairline bottom edge marks where each item starts/ends. This also
+    // resets the global `a { border-bottom: ...rust }` rule (see
+    // app/globals.css) which otherwise applies to every real <a> here too —
+    // that stray rust line (and its hover-color variant) was what made the
+    // hover state look like it was bleeding past the row's own bounds.
+    borderBottom: '1px solid var(--border-hairline)',
     color: disabled ? 'var(--text-disabled)' : active ? 'var(--text-heading)' : 'var(--text-muted)',
     font: 'var(--type-button)',
     letterSpacing: 'var(--tracking-wide)',
@@ -235,7 +241,7 @@ export function Shell({ view, pull, lastComment, children }) {
           Social listening
         </div>
       </div>
-      <div style={{ display: 'grid', gap: 2, padding: 'var(--space-3) 0', flex: 1 }}>
+      <div style={{ display: 'grid', padding: 'var(--space-3) 0', flex: 1 }}>
         {VIEWS.map((v) => (
           <NavItem key={v.id} view={v} active={v.id === view} />
         ))}
