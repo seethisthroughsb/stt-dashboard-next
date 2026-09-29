@@ -331,7 +331,7 @@ async function getMonths(client) {
 
 async function getWrittenForMe(client, limit = 10) {
   const { rows } = await client.query(
-    `SELECT platform, body, posted_at, likes, title, manual_tag, sentiment_tag
+    `SELECT platform, body, posted_at, likes, title, source_url, manual_tag, sentiment_tag
      FROM comments
      WHERE excluded = FALSE
        AND (COALESCE(manual_tag, sentiment_tag) ILIKE '%Written for Me%')
@@ -346,6 +346,7 @@ async function getWrittenForMe(client, limit = 10) {
     likes: r.likes || 0,
     tags: splitTags(r.manual_tag, r.sentiment_tag),
     title: r.title || '',
+    url: r.source_url || null,
   }));
 }
 
@@ -357,7 +358,7 @@ async function getWrittenForMe(client, limit = 10) {
 // this payload heavy (already flagged as an open item in the project doc).
 async function getAllComments(client, limit = 5000) {
   const { rows } = await client.query(
-    `SELECT platform, body, posted_at, likes, title, manual_tag, sentiment_tag, emoji_only
+    `SELECT platform, body, posted_at, likes, title, source_url, manual_tag, sentiment_tag, emoji_only
      FROM comments
      WHERE excluded = FALSE
      ORDER BY posted_at DESC
@@ -371,6 +372,7 @@ async function getAllComments(client, limit = 5000) {
     likes: r.likes || 0,
     tags: tagsForComment(r.manual_tag, r.sentiment_tag),
     title: r.title || '',
+    url: r.source_url || null,
     emojiOnly: !!r.emoji_only,
   }));
 }

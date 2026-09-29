@@ -49,9 +49,27 @@ export function QuoteCard({ c, hero }) {
           <TagChip key={t} t={t} />
         ))}
       </div>
-      {c.title && (
-        <div style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)', marginTop: 'var(--space-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          on &ldquo;{c.title}&rdquo;
+      {(c.title || c.url) && (
+        <div
+          style={{
+            display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 'var(--space-2)',
+            font: 'var(--type-body-sm)', color: 'var(--text-body)',
+            marginTop: 'var(--space-3)', paddingTop: 'var(--space-2)',
+            borderTop: '1px solid var(--border-hairline)',
+          }}
+        >
+          <span style={{ color: 'var(--text-muted)' }}>On:</span>
+          {c.title ? <span>&ldquo;{c.title}&rdquo;</span> : <span style={{ color: 'var(--text-muted)' }}>(untitled)</span>}
+          {c.url && (
+            <a
+              href={c.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: 'var(--stt-rust)', textDecoration: 'underline', whiteSpace: 'nowrap' }}
+            >
+              View original ↗
+            </a>
+          )}
         </div>
       )}
     </div>
