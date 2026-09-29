@@ -33,14 +33,17 @@ const BUILT_VIEWS = new Set(['now', 'voice', 'platforms', 'audience', 'campaigns
 // both analytics-heavy sources, then merch, then insights, then tagging
 // last (comments have to exist before they can be tagged) — that's the
 // order used here; correctness over matching the mockup's exact sequence.
-// 'ai-summary' is last on purpose: it synthesizes Opportunities' rule-engine
-// insights (see lib/insights.js), which read totals/breakdowns/tag counts
-// that every earlier stage may have just refreshed — including sentiment
-// tagging, since the untagged-comment count feeds one rule. It hits this
-// app's own /api/sync/ai-summary route (not the external backend proxy the
-// other 7 stages use — see that route's own comment) and never fails the
-// rest of a sync; if it errors, Shell's normal per-stage handling below just
-// reports it like any other failed stage.
+// 'translate' and 'ai-summary' are last on purpose, in that order: both hit
+// this app's own local routes (not the external backend proxy the other 7
+// stages use — /api/sync/[source]/route.js only allows those 7 keys
+// through; a literal folder route like /api/sync/translate takes routing
+// precedence over that dynamic catch-all in Next.js, so no special-casing
+// is needed here — the fetch below is identical for every stage). Neither
+// ever fails the rest of a sync in a way that loses data — if either
+// errors, Shell's normal per-stage handling just reports it like any other
+// failed stage. Translate runs before AI summary since a freshly-translated
+// comment could in principle matter to a future insight rule, though none
+// reads translated_text today.
 const SOURCES = [
   { key: 'youtube-comments', label: 'YouTube comments' },
   { key: 'meta-comments', label: 'Meta comments' },
@@ -49,6 +52,7 @@ const SOURCES = [
   { key: 'meta-insights', label: 'Meta insights' },
   { key: 'youtube-analytics', label: 'YouTube analytics' },
   { key: 'sentiment-tagging', label: 'Sentiment tagging' },
+  { key: 'translate', label: 'Translation' },
   { key: 'ai-summary', label: 'AI summary' },
 ];
 

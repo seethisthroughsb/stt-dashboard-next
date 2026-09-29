@@ -71,9 +71,12 @@ async function buildNow() {
 
 async function buildVoice() {
   const d = await loadFanVoiceData();
-  const rows = [['Date', 'Platform', 'Text', 'Tags', 'Likes', 'Title', 'URL', 'Emoji Only']];
+  const rows = [['Date', 'Platform', 'Text', 'Language', 'Translation', 'Tags', 'Likes', 'Title', 'URL', 'Emoji Only']];
   for (const c of d.comments) {
-    rows.push([c.date, c.p, c.text, c.tags.join('; '), c.likes, c.title, c.url || '', c.emojiOnly ? 'Yes' : 'No']);
+    rows.push([
+      c.date, c.p, c.text, c.lang || 'English', c.translatedText || '',
+      c.tags.join('; '), c.likes, c.title, c.url || '', c.emojiOnly ? 'Yes' : 'No',
+    ]);
   }
   return rows;
 }

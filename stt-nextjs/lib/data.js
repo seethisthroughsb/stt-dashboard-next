@@ -331,7 +331,8 @@ async function getMonths(client) {
 
 async function getWrittenForMe(client, limit = 10) {
   const { rows } = await client.query(
-    `SELECT platform, body, posted_at, likes, title, source_url, manual_tag, sentiment_tag
+    `SELECT platform, body, posted_at, likes, title, source_url, manual_tag, sentiment_tag,
+            lang, translated_text
      FROM comments
      WHERE excluded = FALSE
        AND (COALESCE(manual_tag, sentiment_tag) ILIKE '%Written for Me%')
@@ -347,6 +348,8 @@ async function getWrittenForMe(client, limit = 10) {
     tags: splitTags(r.manual_tag, r.sentiment_tag),
     title: r.title || '',
     url: r.source_url || null,
+    lang: r.lang && r.lang !== 'English' ? r.lang : null,
+    translatedText: r.translated_text || null,
   }));
 }
 
@@ -358,7 +361,8 @@ async function getWrittenForMe(client, limit = 10) {
 // this payload heavy (already flagged as an open item in the project doc).
 async function getAllComments(client, limit = 5000) {
   const { rows } = await client.query(
-    `SELECT platform, body, posted_at, likes, title, source_url, manual_tag, sentiment_tag, emoji_only
+    `SELECT platform, body, posted_at, likes, title, source_url, manual_tag, sentiment_tag,
+            emoji_only, lang, translated_text
      FROM comments
      WHERE excluded = FALSE
      ORDER BY posted_at DESC
@@ -374,6 +378,12 @@ async function getAllComments(client, limit = 5000) {
     title: r.title || '',
     url: r.source_url || null,
     emojiOnly: !!r.emoji_only,
+    // lang is only surfaced when it's something worth telling the reader —
+    // an English comment still gets `lang = 'English'` in Postgres (that's
+    // what marks it as already processed, see translate/route.js), but
+    // there's nothing to show for that case, so it's nulled out here.
+    lang: r.lang && r.lang !== 'English' ? r.lang : null,
+    translatedText: r.translated_text || null,
   }));
 }
 

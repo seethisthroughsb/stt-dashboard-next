@@ -41,6 +41,13 @@ export function QuoteCard({ c, hero }) {
       <p style={{ font: hero ? 'var(--type-body)' : 'var(--type-body-sm)', color: hero ? 'var(--text-heading)' : 'var(--text-body)', margin: 0, maxWidth: '62ch' }}>
         &ldquo;{c.text}&rdquo;
       </p>
+      {/* Original text above is never replaced — this is purely additive,
+          cached by the translate Sync Now stage (see lib/data.js). */}
+      {c.translatedText && (
+        <p style={{ font: 'var(--type-body-sm)', fontStyle: 'italic', color: 'var(--text-muted)', margin: 'var(--space-2) 0 0', maxWidth: '62ch' }}>
+          Translated{c.lang ? ` from ${c.lang}` : ''}: &ldquo;{c.translatedText}&rdquo;
+        </p>
+      )}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', alignItems: 'center', marginTop: 'var(--space-3)' }}>
         <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 'var(--size-2xs)', letterSpacing: 'var(--tracking-label)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
           {c.p} · {fmt(c.date)}{c.likes ? ' · ' + c.likes + ' likes' : ''}
