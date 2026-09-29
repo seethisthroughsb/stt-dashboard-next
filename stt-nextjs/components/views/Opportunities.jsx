@@ -78,6 +78,31 @@ export function Opportunities({ d }) {
         from. Nothing here is a hunch — if a rule stops being true, its card disappears.
       </p>
 
+      {d.aiSummary?.text ? (
+        <div
+          style={{
+            border: '1px solid var(--border-hairline)',
+            borderLeft: '3px solid var(--stt-ice)',
+            background: 'var(--surface-card)',
+            padding: 'var(--space-5)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
+            <span style={{ display: 'inline-flex', color: 'var(--stt-ice)' }}>
+              <Icon name="sparkles" size={14} />
+            </span>
+            <span style={{ font: 'var(--type-label-sm)', letterSpacing: 'var(--tracking-label)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+              AI summary{d.aiSummary.generatedAt ? ` · generated ${new Date(d.aiSummary.generatedAt).toLocaleDateString('en-US')}` : ''}
+            </span>
+          </div>
+          <p style={{ font: 'var(--type-body-sm)', color: 'var(--text-body)', margin: 0, maxWidth: '72ch' }}>{d.aiSummary.text}</p>
+        </div>
+      ) : (
+        <div style={{ border: '1px solid var(--border-hairline)', padding: 'var(--space-4)', color: 'var(--text-muted)', font: 'var(--type-body-sm)' }}>
+          No AI summary yet — it's generated as the last stage of Sync Now.
+        </div>
+      )}
+
       <Grid min={150}>
         <Metric label="Blindspots" value={count('blindspot')} note="Being missed or wasted" />
         <Metric label="Opportunities" value={count('opportunity')} note="Working, not being pushed" />
@@ -107,8 +132,10 @@ export function Opportunities({ d }) {
       <p style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)', maxWidth: '66ch', margin: 0 }}>
         Rules live in <code style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-heading)' }}>lib/insights.js</code> —
         each is a function over the same data the charts read, with a threshold and a weight. They are
-        deliberately not AI-generated: a rule can be argued with, audited, and corrected. An LLM pass
-        could sit on top later to draft the copy, but the reasoning should stay explainable.
+        deliberately not AI-generated: a rule can be argued with, audited, and corrected. The AI summary
+        above sits on top of these same cards — Claude synthesizes them into a narrative once per Sync
+        Now, but is instructed never to invent a number of its own, so the reasoning underneath stays
+        explainable.
       </p>
     </>
   );

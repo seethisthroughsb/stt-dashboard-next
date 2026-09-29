@@ -33,6 +33,14 @@ const BUILT_VIEWS = new Set(['now', 'voice', 'platforms', 'audience', 'campaigns
 // both analytics-heavy sources, then merch, then insights, then tagging
 // last (comments have to exist before they can be tagged) — that's the
 // order used here; correctness over matching the mockup's exact sequence.
+// 'ai-summary' is last on purpose: it synthesizes Opportunities' rule-engine
+// insights (see lib/insights.js), which read totals/breakdowns/tag counts
+// that every earlier stage may have just refreshed — including sentiment
+// tagging, since the untagged-comment count feeds one rule. It hits this
+// app's own /api/sync/ai-summary route (not the external backend proxy the
+// other 7 stages use — see that route's own comment) and never fails the
+// rest of a sync; if it errors, Shell's normal per-stage handling below just
+// reports it like any other failed stage.
 const SOURCES = [
   { key: 'youtube-comments', label: 'YouTube comments' },
   { key: 'meta-comments', label: 'Meta comments' },
@@ -41,6 +49,7 @@ const SOURCES = [
   { key: 'meta-insights', label: 'Meta insights' },
   { key: 'youtube-analytics', label: 'YouTube analytics' },
   { key: 'sentiment-tagging', label: 'Sentiment tagging' },
+  { key: 'ai-summary', label: 'AI summary' },
 ];
 
 const SIDEBAR_W = 216;

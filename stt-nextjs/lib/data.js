@@ -467,6 +467,19 @@ async function getReleaseHighlight(client) {
   };
 }
 
+// The AI-generated Opportunities synthesis (see app/api/sync/ai-summary/
+// route.js). Generated once per Sync Now run, not per page load — this just
+// reads back whatever was cached there last. Absent until the first sync
+// that includes the new "AI summary" stage runs.
+async function getAiSummary(client) {
+  const { rows } = await client.query(
+    `SELECT value FROM app_settings WHERE key = 'ai_summary'`
+  );
+  const v = rows[0]?.value;
+  if (!v?.text) return null;
+  return { text: v.text, generatedAt: v.generatedAt || null, model: v.model || null };
+}
+
 async function getLastCommentDate(client) {
   const { rows } = await client.query(
     `SELECT MAX(posted_at) AS latest FROM comments WHERE excluded = FALSE`
@@ -633,7 +646,7 @@ async function loadOpportunitiesData() {
   const pool = getPool();
   const client = await pool.connect();
   try {
-    const [totals, breakdowns, ytDaily, fbEng, months, release, untaggedCount] = await Promise.all([
+    const [totals, breakdowns, ytDaily, fbEng, months, release, untaggedCount, aiSummary] = await Promise.all([
       getTotals(client),
       getBreakdowns(client),
       getYtDailySeries(client),
@@ -641,6 +654,7 @@ async function loadOpportunitiesData() {
       getMonths(client),
       getReleaseHighlight(client),
       getUntaggedCount(client),
+      getAiSummary(client),
     ]);
 
     return {
@@ -650,6 +664,7 @@ async function loadOpportunitiesData() {
       months,
       releaseMonth: release.releaseMonth,
       tagCount: { Unreviewed: untaggedCount },
+      aiSummary,
     };
   } finally {
     client.release();
