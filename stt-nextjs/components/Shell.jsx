@@ -1,8 +1,10 @@
 'use client';
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { Logo } from './Logo';
 import { Icon } from './Icon';
 import { Button } from './Button';
+import { Toast } from './Toast';
 
 // Ported from reference/ui_kits/dashboard/Shell.jsx. Two changes from the
 // prototype, both per START-HERE.md's Vercel port guidance:
@@ -10,10 +12,7 @@ import { Button } from './Button';
 //      at 760px) is CSS-driven (see .stt-sidebar-desktop etc. in
 //      app/globals.css) instead of a JS `useNarrow()` width hook, so there's
 //      no server/client layout mismatch on first paint.
-//   2. Only "Right now" is a real route so far — the other 6 views are
-//      being built one at a time (see the project handoff doc). They render
-//      as disabled nav items rather than being left out, so the full nav
-//      structure is visible from the start.
+//   2. All 7 views now have real routes.
 export const VIEWS = [
   { id: 'now', href: '/', label: 'Right now', icon: 'activity' },
   { id: 'voice', href: '/voice', label: 'Fan voice', icon: 'message-square' },
@@ -24,9 +23,25 @@ export const VIEWS = [
   { id: 'merch', href: '/merch', label: 'Merch', icon: 'shopping-bag' },
 ];
 
-// Views that have a real route built so far. Update this as each one ships.
-// All 7 views now have real routes.
 const BUILT_VIEWS = new Set(['now', 'voice', 'platforms', 'audience', 'campaigns', 'opportunities', 'merch']);
+
+// The design bundle's own Sync Now spec ("SOURCES is the actual pull order
+// from the backend handoff") lists YouTube comments → YouTube analytics →
+// Meta comments → Meta insights → Website → Merch → Sentiment tagging. The
+// order actually proven clean end-to-end in production (see
+// STT_Vercel_Migration_Handoff.md) groups both comment sources first, then
+// both analytics-heavy sources, then merch, then insights, then tagging
+// last (comments have to exist before they can be tagged) — that's the
+// order used here; correctness over matching the mockup's exact sequence.
+const SOURCES = [
+  { key: 'youtube-comments', label: 'YouTube comments' },
+  { key: 'meta-comments', label: 'Meta comments' },
+  { key: 'website-analytics', label: 'Website (GA4)' },
+  { key: 'merch', label: 'Merch (WooCommerce)' },
+  { key: 'meta-insights', label: 'Meta insights' },
+  { key: 'youtube-analytics', label: 'YouTube analytics' },
+  { key: 'sentiment-tagging', label: 'Sentiment tagging' },
+];
 
 const SIDEBAR_W = 216;
 
@@ -88,40 +103,100 @@ const STAMP_LINE = {
 
 // Freshness is load-bearing here: the analytics pull is daily, the comment
 // feed can be quiet for weeks. Showing both stops "quiet" reading as
-// "broken". Sync Now's real (non-simulated) progress state lands in a later
-// step — see the project handoff doc's Sync Now section — so this only
-// renders the idle state for now.
-function DataStamp({ pull, lastComment }) {
+// "broken". While a sync is running this becomes the progress readout per
+// the design spec: stage name, a 2px rust bar at done/total, and the count.
+// A failed sync leaves a persistent rust line until the next success.
+function DataStamp({ pull, lastComment, sync }) {
   const days = lastComment ? Math.max(0, Math.round((Date.now() - new Date(lastComment)) / 86400000)) : null;
+
+  if (sync.status === 'running') {
+    const pct = sync.total ? Math.round((sync.done / sync.total) * 100) : 0;
+    return (
+      <div style={{ padding: 'var(--space-4)', borderTop: '1px solid var(--border-hairline)', display: 'grid', gap: 'var(--space-2)' }}>
+        <div style={STAMP_LINE}>Syncing · {sync.stage}</div>
+        <div style={{ height: 2, background: 'var(--viz-bar-track)', position: 'relative' }}>
+          <div style={{ position: 'absolute', inset: '0 auto 0 0', width: `${pct}%`, background: 'var(--stt-rust)', transition: 'width 0.3s' }} />
+        </div>
+        <div style={STAMP_LINE}>{sync.done} of {sync.total} sources</div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: 'var(--space-4)', borderTop: '1px solid var(--border-hairline)', display: 'grid', gap: 'var(--space-2)' }}>
       <div style={STAMP_LINE}>Data pulled {pull}</div>
       <div style={STAMP_LINE}>{days == null ? 'No comments yet' : `Last comment ${days}d ago`}</div>
+      {sync.lastErrorStage && (
+        <div style={{ ...STAMP_LINE, color: 'var(--stt-rust)' }}>Last sync failed · {sync.lastErrorStage}</div>
+      )}
       <div className="stt-readonly-note" style={{ ...STAMP_LINE, color: 'var(--text-disabled)' }}>Read only on mobile</div>
     </div>
   );
 }
 
 // Manual re-pull. Secondary, not primary: the daily automatic pull is the
-// normal path, this is the exception. Not yet wired to real sync routes —
-// disabled with a tooltip until that step. See DataStamp's comment above.
-function SyncButton() {
+// normal path, this is the exception. Calls this app's own /api/sync/*
+// proxy routes (see app/api/sync/[source]/route.js) one source at a time,
+// in SOURCES order, so the UI can advance per stage rather than only
+// reporting at the very end.
+function SyncButton({ status, onClick }) {
+  const running = status === 'running';
   return (
     <Button
-      variant="secondary" size="sm" disabled
+      variant="secondary" size="sm"
+      disabled={running}
       className="stt-sync-btn"
       aria-label="Sync now"
-      title="Sync now — coming in a later step"
+      title={running ? 'Syncing…' : 'Re-pull all 7 sources now'}
+      onClick={onClick}
     >
-      <Icon name="refresh-cw" size={14} />
-      <span className="stt-sync-btn-label">Sync now</span>
+      <span style={{ display: 'inline-flex', animation: running ? 'stt-spin 1.1s linear infinite' : undefined }}>
+        <Icon name="refresh-cw" size={14} />
+      </span>
+      <span className="stt-sync-btn-label">{running ? 'Syncing' : 'Sync now'}</span>
     </Button>
   );
 }
 
 export function Shell({ view, pull, lastComment, children }) {
   const [mobileNav, setMobileNav] = React.useState(false);
+  const [sync, setSync] = React.useState({ status: 'idle', stage: null, done: 0, total: SOURCES.length, lastErrorStage: null });
+  const [toast, setToast] = React.useState(null);
+  const toastTimer = React.useRef(null);
+  const router = useRouter();
   const active = VIEWS.find((v) => v.id === view) || VIEWS[0];
+
+  const notify = (message, tone) => {
+    setToast({ message, tone: tone || 'success' });
+    window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 4000);
+  };
+
+  const runSync = async () => {
+    if (sync.status === 'running') return;
+    setSync({ status: 'running', stage: SOURCES[0].label, done: 0, total: SOURCES.length, lastErrorStage: null });
+
+    for (let i = 0; i < SOURCES.length; i++) {
+      const src = SOURCES[i];
+      setSync((s) => ({ ...s, stage: src.label, done: i }));
+      try {
+        const resp = await fetch(`/api/sync/${src.key}`, { cache: 'no-store' });
+        const data = await resp.json().catch(() => null);
+        if (!resp.ok || !data || data.ok === false) {
+          throw new Error((data && data.error) || `${src.label} failed`);
+        }
+      } catch (err) {
+        setSync({ status: 'idle', stage: null, done: i, total: SOURCES.length, lastErrorStage: src.label });
+        notify(`Sync failed at ${src.label}. ${err.message}`, 'danger');
+        return;
+      }
+    }
+
+    const stamp = new Date().toLocaleDateString('en-US');
+    setSync({ status: 'idle', stage: null, done: SOURCES.length, total: SOURCES.length, lastErrorStage: null });
+    notify(`All ${SOURCES.length} sources re-pulled. Data current as of ${stamp}.`, 'success');
+    router.refresh();
+  };
 
   const sidebar = (
     <nav
@@ -144,7 +219,7 @@ export function Shell({ view, pull, lastComment, children }) {
           <NavItem key={v.id} view={v} active={v.id === view} />
         ))}
       </div>
-      <DataStamp pull={pull} lastComment={lastComment} />
+      <DataStamp pull={pull} lastComment={lastComment} sync={sync} />
     </nav>
   );
 
@@ -187,7 +262,7 @@ export function Shell({ view, pull, lastComment, children }) {
             </h1>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flex: 'none' }}>
-            <SyncButton />
+            <SyncButton status={sync.status} onClick={runSync} />
             <Button variant="secondary" size="sm" disabled className="stt-header-export" title="Export — coming in a later step">
               <Icon name="download" size={14} /> Export
             </Button>
@@ -202,6 +277,12 @@ export function Shell({ view, pull, lastComment, children }) {
           {children}
         </main>
       </div>
+
+      {toast && (
+        <div style={{ position: 'fixed', left: 'var(--space-5)', bottom: 'var(--space-5)', zIndex: 200, maxWidth: 360 }}>
+          <Toast message={toast.message} tone={toast.tone} onDismiss={() => setToast(null)} />
+        </div>
+      )}
     </div>
   );
 }
