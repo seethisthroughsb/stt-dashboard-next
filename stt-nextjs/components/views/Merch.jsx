@@ -34,6 +34,17 @@ export function Merch({ d }) {
   const addToCart = (d.breakdowns.webConv.find((c) => /add_to_cart/i.test(c[0])) || [, 0])[1];
   const viewItemList = (d.breakdowns.webConv.find((c) => /view_item_list/i.test(c[0])) || [, 0])[1];
 
+  // Same bot-likelihood check as lib/insights.js's cart-add rule, surfaced
+  // right where the raw count lives — engagement rate (GA4's own "engaged
+  // session" definition: 10s+, a conversion event, or 2+ pageviews) is the
+  // closest proxy GA4 exposes to "was this a real visitor," short of a
+  // dedicated bot flag.
+  const addToCartEng = (d.breakdowns.webConvEngagement || []).find((e) => /add_to_cart/i.test(e.event));
+  const addToCartEngRate = addToCartEng && addToCartEng.sessions > 0 ? addToCartEng.engagedSessions / addToCartEng.sessions : null;
+  const cartBotFlag = addToCartEngRate !== null && addToCartEng.eventCount >= 20 && addToCartEngRate < 0.4
+    ? `Only ${Math.round(addToCartEngRate * 100)}% of these sessions were "engaged" — a rate this low usually means automated traffic, not real shoppers.`
+    : null;
+
   const cartToPurchase = addToCart > 0 ? Math.round((s.totalOrders / addToCart) * 100) : null;
   const combinedFollowers = t.fbFans + t.igFollowers;
   const revenuePerFan = combinedFollowers > 0 ? s.netSales / combinedFollowers : null;
@@ -60,6 +71,7 @@ export function Merch({ d }) {
             label="Added to cart"
             value={addToCart.toLocaleString()}
             note={`across ${t.webSessions30.toLocaleString()} sessions`}
+            flag={cartBotFlag}
           />
           <Metric label="Completed orders" value={s.totalOrders.toLocaleString()} note="WooCommerce, same 30-day window" />
         </Grid>

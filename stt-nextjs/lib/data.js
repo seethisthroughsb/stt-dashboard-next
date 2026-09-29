@@ -195,7 +195,7 @@ function stripAgePrefix(raw) {
 }
 
 async function getBreakdowns(client) {
-  const [ytSrc, ytGeo, ytDev, webConv, webDev, webSrc, ytAge, igDemoAG, igDemoC] = await Promise.all([
+  const [ytSrc, ytGeo, ytDev, webConv, webDev, webSrc, ytAge, igDemoAG, igDemoC, webConvEngagement] = await Promise.all([
     // ORDER BY value DESC on every one of these — several views read index
     // [0] as "the top entry" (RightNow's playlist callout, Audience's/
     // Campaigns' top-country and top-source sentences), so the sort has to
@@ -255,8 +255,33 @@ async function getBreakdowns(client) {
        WHERE source = 'meta' AND report_type = 'Instagram Follower Demographics (Country)' AND metric = 'follower_demographics'
        ORDER BY value DESC`
     ),
+    // sessions + engagedSessions per event, alongside eventCount (webConv
+    // above) — added so a bot-likelihood signal can be computed for
+    // add_to_cart specifically (see lib/insights.js). GA4 doesn't expose a
+    // direct "is this session a bot" field beyond its own automatic
+    // known-bot filtering; engagement rate (an engaged session lasted 10s+,
+    // had a conversion event, or had 2+ pageviews) is the closest proxy it
+    // does expose. Requires website-analytics.js's Conversions (30d) report
+    // to request these metrics — rows are absent for any sync run before
+    // that change shipped.
+    client.query(
+      `SELECT dimensions->>'eventName' AS key, metric, value
+       FROM analytics_metrics
+       WHERE source = 'website' AND report_type = 'Conversions (30d)'
+         AND metric IN ('eventCount', 'sessions', 'engagedSessions')`
+    ),
   ]);
   const toPairs = (res) => toRows(res).filter((r) => r.key).map((r) => [r.key, Number(r.value)]);
+
+  const engByEvent = {};
+  for (const r of toRows(webConvEngagement)) {
+    if (!r.key) continue;
+    if (!engByEvent[r.key]) engByEvent[r.key] = { event: r.key, eventCount: 0, sessions: 0, engagedSessions: 0 };
+    if (r.metric === 'eventCount') engByEvent[r.key].eventCount = Number(r.value);
+    else if (r.metric === 'sessions') engByEvent[r.key].sessions = Number(r.value);
+    else if (r.metric === 'engagedSessions') engByEvent[r.key].engagedSessions = Number(r.value);
+  }
+
   return {
     ytSrc: toPairs(ytSrc),
     ytGeo: toPairs(ytGeo),
@@ -271,6 +296,7 @@ async function getBreakdowns(client) {
       .filter((r) => r.age && r.gender)
       .map((r) => [r.age, r.gender, Number(r.value)]),
     igDemoC: toPairs(igDemoC),
+    webConvEngagement: Object.values(engByEvent),
   };
 }
 
@@ -639,14 +665,17 @@ async function loadCampaignsData() {
 // months + release month + a tagCount shape carrying just the one field
 // insights.js's data-quality rule reads (`tagCount['Unreviewed']`) — no need
 // to fetch every comment to tally every tag when only that one count feeds
-// a rule. The raw shape is handed to lib/insights.js's deriveInsights() in
-// the view itself (a pure function over this same data, ported from the
-// design bundle's insights.js).
+// a rule. `merch` is just the sales summary (not the full loadMerchData()
+// payload) — the merch-funnel-gap rule needs real order/revenue numbers now
+// that WooCommerce is connected, so it stops claiming they don't exist. The
+// raw shape is handed to lib/insights.js's deriveInsights() in the view
+// itself (a pure function over this same data, ported from the design
+// bundle's insights.js).
 async function loadOpportunitiesData() {
   const pool = getPool();
   const client = await pool.connect();
   try {
-    const [totals, breakdowns, ytDaily, fbEng, months, release, untaggedCount, aiSummary] = await Promise.all([
+    const [totals, breakdowns, ytDaily, fbEng, months, release, untaggedCount, aiSummary, merch] = await Promise.all([
       getTotals(client),
       getBreakdowns(client),
       getYtDailySeries(client),
@@ -655,6 +684,7 @@ async function loadOpportunitiesData() {
       getReleaseHighlight(client),
       getUntaggedCount(client),
       getAiSummary(client),
+      getMerchSalesSummary(client),
     ]);
 
     return {
@@ -665,6 +695,7 @@ async function loadOpportunitiesData() {
       releaseMonth: release.releaseMonth,
       tagCount: { Unreviewed: untaggedCount },
       aiSummary,
+      merch,
     };
   } finally {
     client.release();

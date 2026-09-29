@@ -34,6 +34,10 @@ function deriveInsights(d) {
   const search = find(d.breakdowns.ytSrc, 'YT_SEARCH');
   const mobile = find(d.breakdowns.ytDev, 'MOBILE');
   const addToCart = findRe(d.breakdowns.webConv, /add_to_cart/i);
+  const addToCartEng = (d.breakdowns.webConvEngagement || []).find((e) => /add_to_cart/i.test(e.event));
+  const addToCartEngRate = addToCartEng && addToCartEng.sessions > 0
+    ? addToCartEng.engagedSessions / addToCartEng.sessions
+    : null;
 
   /* ---- Discovery ------------------------------------------------------- */
   if (srcTotal > 0 && playlist / srcTotal > 0.35) {
@@ -142,16 +146,41 @@ function deriveInsights(d) {
     });
   }
 
-  /* ---- Merch funnel gap ------------------------------------------------ */
-  if (addToCart > 0) {
+  /* ---- Merch funnel gap ------------------------------------------------- */
+  // WooCommerce is connected (unlike the design bundle's assumption) — the
+  // real remaining gap isn't missing revenue data, it's that GA4 and
+  // WooCommerce share no session/order ID, so the two counts can't be
+  // joined into a true add-to-cart-to-purchase funnel (Merch.jsx makes the
+  // same "not a funnel" point about these same fields).
+  if (addToCart > 0 && d.merch) {
     out.push({
-      kind: 'blindspot', weight: 92,
-      title: 'You can see carts filling. You cannot see sales.',
-      stat: addToCart.toLocaleString(),
-      statLabel: 'add-to-cart events, 30 days',
-      evidence: addToCart.toLocaleString() + ' add-to-cart events against ' + t.webSessions30.toLocaleString() +
-        ' sessions — but no purchase, revenue or abandonment data is being tracked, so the most commercially important number in the business is invisible.',
-      action: 'Connect WooCommerce. Orders, revenue and units-per-product turn this from a traffic dashboard into a business one. See the Merch view for the fields needed.',
+      kind: 'blindspot', weight: 85,
+      title: "Cart activity and orders can't be joined session-by-session",
+      stat: addToCart.toLocaleString() + ' vs ' + d.merch.totalOrders.toLocaleString(),
+      statLabel: 'add-to-cart events vs completed orders, 30 days',
+      evidence: addToCart.toLocaleString() + ' add-to-cart events and ' + d.merch.totalOrders.toLocaleString() +
+        ' completed WooCommerce orders in the same 30 days — both real, both tracked, but GA4 and WooCommerce share no session or order ID, so there is no way to confirm which orders came from which carts, or measure a true cart-to-purchase rate.',
+      action: 'If it matters, add a shared identifier (GA4’s Enhanced Ecommerce purchase event, tagged with the WooCommerce order ID) so the two can be joined. Until then, treat these as two separate signals, not one funnel.',
+    });
+  }
+
+  /* ---- Cart-add bot signature -------------------------------------------- */
+  // GA4 doesn't expose a per-event "is this a bot" field beyond its own
+  // automatic known-bot filtering (already applied) plus the sync's own
+  // bot-country exclusion (see website-analytics.js) — engagement rate is
+  // the closest available proxy. A real shopper adding something to a cart
+  // is overwhelmingly likely to also be an "engaged" session per GA4's own
+  // definition (10s+, a conversion event, or 2+ pageviews); a low rate on a
+  // meaningful volume of adds is a real signal, not noise.
+  if (addToCartEngRate !== null && addToCartEng.eventCount >= 20 && addToCartEngRate < 0.4) {
+    out.push({
+      kind: 'risk', weight: 80,
+      title: 'A lot of your cart-adds don’t look human',
+      stat: Math.round(addToCartEngRate * 100) + '%',
+      statLabel: 'of add-to-cart sessions were engaged',
+      evidence: addToCartEng.engagedSessions.toLocaleString() + ' of ' + addToCartEng.sessions.toLocaleString() +
+        ' sessions that added to cart counted as an engaged session (GA4: 10s+, a conversion event, or 2+ pageviews) — a real shopper adding an item almost always clears that bar, so this ratio points to automated traffic inflating the add-to-cart count.',
+      action: 'Check GA4’s Explore/Realtime view for the sessions behind these events — hostname, browser, and referrer usually give it away. If it’s a known pattern, extend the sync’s bot-country exclusion or add a WooCommerce-side rate limit.',
     });
   }
 
