@@ -72,7 +72,7 @@ function NavItem({ view, active }) {
   );
   const style = {
     display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
-    width: '100%', height: 40, boxSizing: 'border-box',
+    width: '100%', height: 120, boxSizing: 'border-box',
     padding: '0 var(--space-4)',
     background: active ? 'var(--surface-active)' : hover && !disabled ? 'var(--surface-hover)' : 'transparent',
     border: 0,
@@ -241,7 +241,15 @@ export function Shell({ view, pull, lastComment, children }) {
           Social listening
         </div>
       </div>
-      <div style={{ display: 'grid', padding: 'var(--space-3) 0', flex: 1 }}>
+      {/* alignContent: 'start' is load-bearing: without it, CSS Grid's
+          default stretches these auto-sized rows to fill all leftover
+          vertical space in the sidebar, so each item's box (and its
+          hairline bottom border) ends up far taller than its own content —
+          text/icon then anchor to the top of that oversized box instead of
+          sitting centered in it. 'start' keeps every row exactly as tall as
+          its item (now a fixed 120px), so the hairline hugs each item and
+          any leftover space collects below the last item instead. */}
+      <div style={{ display: 'grid', alignContent: 'start', padding: 'var(--space-3) 0', flex: 1 }}>
         {VIEWS.map((v) => (
           <NavItem key={v.id} view={v} active={v.id === view} />
         ))}
