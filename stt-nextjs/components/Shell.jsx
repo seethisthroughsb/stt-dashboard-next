@@ -233,6 +233,16 @@ export function Shell({ view, pull, lastComment, children }) {
         display: 'flex', flexDirection: 'column',
         background: 'var(--surface-page)',
         height: '100%',
+        // Clips horizontally only, so a NavItem's hover/active background
+        // can never render past the sidebar's own right edge into the main
+        // content column, however it happens to get there (subpixel/zoom
+        // rounding between two adjacent 100%-width flex children is the
+        // usual cause). 'clip' (not 'hidden') is deliberate: unlike
+        // 'hidden', it doesn't force the vertical axis to become 'auto' —
+        // vertical overflow behaves exactly as before (the page grows/
+        // scrolls normally if the nav's content is taller than the
+        // viewport), only the horizontal edge is now a hard boundary.
+        overflowX: 'clip',
       }}
     >
       <div style={{ padding: 'var(--space-5) var(--space-4)', borderBottom: '1px solid var(--border-hairline)', color: 'var(--stt-ice)' }}>
