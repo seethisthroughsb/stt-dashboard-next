@@ -172,6 +172,14 @@ export function Shell({ view, pull, lastComment, children }) {
     toastTimer.current = window.setTimeout(() => setToast(null), 4000);
   };
 
+  const logout = async () => {
+    try {
+      await fetch('/api/logout', { method: 'POST' });
+    } finally {
+      window.location.href = '/login';
+    }
+  };
+
   const runSync = async () => {
     if (sync.status === 'running') return;
     setSync({ status: 'running', stage: SOURCES[0].label, done: 0, total: SOURCES.length, lastErrorStage: null });
@@ -265,6 +273,9 @@ export function Shell({ view, pull, lastComment, children }) {
             <SyncButton status={sync.status} onClick={runSync} />
             <Button variant="secondary" size="sm" disabled className="stt-header-export" title="Export — coming in a later step">
               <Icon name="download" size={14} /> Export
+            </Button>
+            <Button variant="ghost" size="sm" aria-label="Log out" title="Log out" onClick={logout}>
+              <Icon name="log-out" size={14} />
             </Button>
           </div>
         </header>
