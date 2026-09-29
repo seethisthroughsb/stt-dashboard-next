@@ -18,6 +18,7 @@ const {
   loadCampaignsData,
   loadOpportunitiesData,
   loadMerchData,
+  summarizeSalesSeries,
 } = require('../../../../lib/data');
 const { deriveInsights } = require('../../../../lib/insights');
 const { csvResponse } = require('../../../../lib/csv');
@@ -144,15 +145,34 @@ async function buildOpportunities() {
 async function buildMerch() {
   const d = await loadMerchData();
   const rows = [['Section', 'Label', 'Value 1', 'Value 2', 'Value 3']];
-  const s = d.salesSummary;
+
+  const s30 = d.salesSummary30d;
   rows.push(
-    ['Sales Summary', 'Revenue (30d)', s.netSales, '', ''],
-    ['Sales Summary', 'Orders', s.totalOrders, '', ''],
-    ['Sales Summary', 'Units Sold', s.totalItems, '', ''],
-    ['Sales Summary', 'Average Order Value', s.avgOrderValue, '', '']
+    ['Sales Summary (30d)', 'Revenue (gross)', s30.totalSales, '', ''],
+    ['Sales Summary (30d)', 'Orders', s30.totalOrders, '', ''],
+    ['Sales Summary (30d)', 'Units Sold', s30.totalItems, '', ''],
+    ['Sales Summary (30d)', 'Average Order Value', s30.avgOrderValue, '', '']
   );
+
+  // All-time totals, derived from the same full daily series the Merch
+  // view's range picker reads from — see "Comment translation"-adjacent
+  // note in lib/data.js: gross sales, WooCommerce doesn't expose a
+  // separate net-of-refunds figure per day.
+  const sAll = summarizeSalesSeries(d.salesSeries, null);
+  rows.push(
+    ['Sales Summary (All Time)', 'Revenue (gross)', sAll.totalSales, '', ''],
+    ['Sales Summary (All Time)', 'Orders', sAll.totalOrders, '', ''],
+    ['Sales Summary (All Time)', 'Units Sold', sAll.totalItems, '', ''],
+    ['Sales Summary (All Time)', 'Average Order Value', sAll.avgOrderValue, '', '']
+  );
+
+  const ordersByDay = Object.fromEntries(d.salesSeries.orders);
+  for (const [day, sales] of d.salesSeries.sales) {
+    rows.push(['Sales Daily Trend', day, sales, ordersByDay[day] || 0, '']);
+  }
+
   for (const [product, units] of d.topSellers) {
-    rows.push(['Top Sellers', product, units, '', '']);
+    rows.push(['Top Sellers (All Time)', product, units, '', '']);
   }
   for (const p of d.lowStock) {
     rows.push(['Low Stock', p.product, p.stockStatus, p.stockQuantity, p.price]);

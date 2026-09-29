@@ -433,41 +433,70 @@ async function getBestPostTime(client) {
 // placeholders — ours already is (see api/sync/merch.js from the earlier
 // migration work), so this view gets real sales/inventory data, not a spec
 // for a future integration.
-async function getMerchSalesSummary(client) {
-  const { rows } = await client.query(
-    `SELECT metric, value FROM analytics_metrics
-     WHERE source = 'merch' AND report_type = 'Merch Sales Summary (30d)'`
-  );
-  const m = Object.fromEntries(rows.map((r) => [r.metric, Number(r.value)]));
-  return {
-    totalSales: m.total_sales || 0,
-    netSales: m.net_sales || 0,
-    totalOrders: m.total_orders || 0,
-    totalItems: m.total_items || 0,
-    avgOrderValue: m.average_order_value || 0,
-  };
-}
-
+// Full order history, one row per (day, metric) — 'sales', 'orders', and
+// (when WooCommerce's per-day totals include it) 'items'. Unbounded since
+// 29 Sep 2026 (Nick's "go all the way back" request): merch.js in
+// stt-social-listening now pulls from the store's actual earliest order
+// forward, not a rolling 30-day window, and this reads back everything
+// that's accumulated. Any date-range summary (30 days, 90 days, year to
+// date, all time, or the Merch view's picker) is derived from this one
+// series via summarizeSalesSeries() below rather than trusting a separate
+// pre-aggregated report — one source of truth, correct for any range.
 async function getMerchSalesSeries(client) {
   const { rows } = await client.query(
     `SELECT metric, dimensions->>'day' AS day, value FROM analytics_metrics
-     WHERE source = 'merch' AND report_type = 'Merch Sales Daily Trend (30d)'
+     WHERE source = 'merch' AND report_type = 'Merch Sales Daily Trend'
      ORDER BY dimensions->>'day'`
   );
   const sales = [];
   const orders = [];
+  const items = [];
   for (const r of rows) {
     const point = [r.day, Number(r.value)];
     if (r.metric === 'sales') sales.push(point);
     else if (r.metric === 'orders') orders.push(point);
+    else if (r.metric === 'items') items.push(point);
   }
-  return { sales, orders };
+  return { sales, orders, items };
+}
+
+// Sums a getMerchSalesSeries() result down to one range's totals. `sinceDay`
+// is an inclusive 'YYYY-MM-DD' lower bound, or null/undefined for all-time.
+// Note: WooCommerce's per-day totals only ever gave us gross `sales`, not a
+// separate net-of-refunds figure the old (now-dropped) summary report used
+// to expose — so `totalSales` here is gross revenue for the window, not net.
+function summarizeSalesSeries(series, sinceDay) {
+  const inRange = (day) => !sinceDay || day >= sinceDay;
+  const sum = (arr) => arr.filter(([day]) => inRange(day)).reduce((t, [, v]) => t + v, 0);
+  const totalSales = sum(series.sales);
+  const totalOrders = sum(series.orders);
+  const totalItems = sum(series.items);
+  return {
+    totalSales,
+    totalOrders,
+    totalItems,
+    avgOrderValue: totalOrders > 0 ? totalSales / totalOrders : 0,
+  };
+}
+
+function daysAgoIso(n) {
+  return new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+// The fixed 30-day figure Opportunities' merch-funnel-gap rule and Merch's
+// own "funnel we can see" section compare against GA4's 30-day add-to-cart
+// count — kept as its own function (rather than always using whatever range
+// the Merch view's picker has selected) so that comparison stays apples-to-
+// apples regardless of what a viewer has the picker set to.
+async function getMerchSalesSummary30d(client) {
+  const series = await getMerchSalesSeries(client);
+  return summarizeSalesSeries(series, daysAgoIso(30));
 }
 
 async function getTopSellers(client, limit = 10) {
   const { rows } = await client.query(
     `SELECT dimensions->>'product' AS product, value FROM analytics_metrics
-     WHERE source = 'merch' AND report_type = 'Top Sellers (30d)' AND metric = 'quantity_sold'
+     WHERE source = 'merch' AND report_type = 'Top Sellers (All Time)' AND metric = 'quantity_sold'
      ORDER BY value DESC
      LIMIT $1`,
     [limit]
@@ -696,7 +725,7 @@ async function loadOpportunitiesData() {
       getReleaseHighlight(client),
       getUntaggedCount(client),
       getAiSummary(client),
-      getMerchSalesSummary(client),
+      getMerchSalesSummary30d(client),
     ]);
 
     return {
@@ -716,16 +745,22 @@ async function loadOpportunitiesData() {
 
 // Loads what the "Merch" view needs: the GA4-visible half of the funnel
 // (totals + breakdowns, already fetched elsewhere) plus the WooCommerce
-// side — sales summary, daily trend, top sellers, and inventory (from
-// which the view derives its own "low stock" cut, sorted lowest-first).
+// side. `salesSeries` is now the FULL all-time daily history (see
+// getMerchSalesSeries) — the view itself (a Client Component as of 29 Sep
+// 2026, for the date-range picker) derives whatever range the picker is set
+// to from this one series client-side, so no server round-trip is needed
+// when the range changes. `salesSummary30d` stays a fixed 30-day figure
+// (not picker-driven) for the "funnel we can see" section and the cart-to-
+// purchase ratio, both of which compare against GA4's own fixed 30-day
+// add-to-cart count and would be misleading against a different window.
 async function loadMerchData() {
   const pool = getPool();
   const client = await pool.connect();
   try {
-    const [totals, breakdowns, salesSummary, salesSeries, topSellers, inventory] = await Promise.all([
+    const [totals, breakdowns, salesSummary30d, salesSeries, topSellers, inventory] = await Promise.all([
       getTotals(client),
       getBreakdowns(client),
-      getMerchSalesSummary(client),
+      getMerchSalesSummary30d(client),
       getMerchSalesSeries(client),
       getTopSellers(client),
       getInventory(client),
@@ -738,11 +773,11 @@ async function loadMerchData() {
     return {
       totals,
       breakdowns,
-      salesSummary,
+      salesSummary30d,
       salesSeries,
       topSellers,
       lowStock,
-      hasSales: salesSummary.totalOrders > 0 || salesSummary.totalSales > 0,
+      hasSales: salesSummary30d.totalOrders > 0 || salesSummary30d.totalSales > 0,
     };
   } finally {
     client.release();
@@ -776,4 +811,5 @@ module.exports = {
   loadOpportunitiesData,
   loadMerchData,
   getSidebarMeta,
+  summarizeSalesSeries,
 };
