@@ -18,7 +18,6 @@ stt-nextjs/
   middleware.js   # auth gate
   public/, fonts/
 ```
-Stray `app/` and `components/` at the repo root are not part of the app — don't add to them.
 
 ## Two repos, one database
 - **stt-dashboard-next** (this repo): the dashboard. Fixes to how data is **displayed** go here.
@@ -40,7 +39,7 @@ Builds the `STT` data shape the views read (server-side equivalent of the design
 - Unbuilt fields are marked `// TODO(<view>)`; fill in, don't reshape.
 
 ## Versioning
-Bump `DASHBOARD_VERSION` in `stt-nextjs/components/Shell.jsx` with **every** change:
+Bump `DASHBOARD_VERSION` in `stt-nextjs/components/Shell.jsx` only for changes that affect the running app (docs and repo config changes don't need a bump):
 - PATCH: bug fixes
 - MINOR: features
 - MAJOR: deployment/usage changes

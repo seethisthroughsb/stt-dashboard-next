@@ -25,7 +25,7 @@ import { Toast } from './Toast';
 // change to how the dashboard is used/deployed (e.g. the eventual domain
 // cutover). Started at 1.0.0 today rather than reconstructing one
 // retroactively for everything already shipped before this existed.
-export const DASHBOARD_VERSION = '1.0.0';
+export const DASHBOARD_VERSION = '1.0.1';
 
 export const VIEWS = [
   { id: 'now', href: '/', label: 'Right now', icon: 'activity' },
