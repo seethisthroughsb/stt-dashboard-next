@@ -3,6 +3,7 @@
 ## Working with Nick (owner)
 - Keep responses brief.
 - Give instructions one step at a time unless asked otherwise.
+- Open PRs, but never merge them — Nick merges. Only merge when he explicitly says to.
 
 ## Repo layout
 The Next.js app lives in `stt-nextjs/`, **not** the repo root. All app files go inside `stt-nextjs/`.
