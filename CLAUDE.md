@@ -18,7 +18,6 @@ stt-nextjs/
   middleware.js   # auth gate
   public/, fonts/
 ```
-Stray `app/` and `components/` at the repo root are not part of the app — don't add to them.
 
 ## Two repos, one database
 - **stt-dashboard-next** (this repo): the dashboard. Fixes to how data is **displayed** go here.
