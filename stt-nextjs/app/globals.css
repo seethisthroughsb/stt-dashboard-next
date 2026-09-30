@@ -645,5 +645,14 @@ a:hover { color: var(--text-link-hover); border-bottom-color: var(--stt-rust-hov
   --font-mono: var(--font-roboto), system-ui, sans-serif;
 }
 
-html, body { height: 100%; }
+html, body { height: 100%; overflow-x: hidden; }
 #__next, body > div:first-child { min-height: 100%; }
+
+/* 30 Sep 2026 (Nick's phone test): something on a narrow viewport was
+   rendering wider than the screen, so a left swipe revealed blank space
+   past the page's right edge — the classic "horizontal overflow" mobile
+   bug. This is a deliberate blanket guard, not a fix for whichever
+   element was actually too wide (full mobile layout optimization is
+   still open work — see the project doc's backlog); it just makes sure
+   nothing can ever be swiped/scrolled into view sideways in the
+   meantime, on this page or any future one. */
