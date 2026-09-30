@@ -78,7 +78,18 @@ function NavItem({ view, active }) {
   const content = (
     <>
       <Icon name={view.icon} size={16} />
-      {view.label}
+      {/* Same "be mindful" request as the header title, applied here too:
+          the sidebar is a fixed 216px regardless of device (not viewport-
+          scaled the way the header title was), and the longest label
+          ("Opportunities") comfortably fits this row at its fixed 14px
+          font with room to spare, so this isn't fixing a visible bug the
+          way the header change was. It's the same defensive intent though
+          — word-break/overflow-wrap stay at their (already-default) normal
+          values explicitly, and minWidth: 0 lets this text shrink/wrap
+          within the flex row rather than force the row wider, so nothing
+          here can ever hyphenate mid-word or silently overflow even if a
+          label changes later. */}
+      <span style={{ minWidth: 0, wordBreak: 'normal', overflowWrap: 'normal' }}>{view.label}</span>
       {disabled && (
         <span style={{ marginLeft: 'auto', font: 'var(--type-label-sm)', color: 'var(--text-disabled)' }}>Soon</span>
       )}
@@ -331,28 +342,40 @@ export function Shell({ view, pull, lastComment, children }) {
           >
             <Icon name="menu" size={20} />
           </button>
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{ flex: 1, minWidth: 0, containerType: 'inline-size' }}
+          >
             <h1
               style={{
                 font: 'var(--type-h3)',
-                // 30 Sep 2026 (Nick's phone screenshot: "FAN V..." — the
-                // title was truncating on narrow screens). The old fixed
-                // 32px size plus nowrap/ellipsis assumed desktop-width
-                // header real estate. This overrides just the size portion
-                // of the `font` shorthand above with a fluid one: it scales
-                // down smoothly on narrow viewports (down to ~17px) and
-                // caps back out at the original 32px once there's room, so
-                // desktop is unchanged. wordBreak is a last-resort safety
-                // net for the longest labels ("Opportunities") on truly
-                // tiny/split-screen widths — normal wrapping onto a second
-                // line handles everything else, and the header's `minHeight`
-                // (not a fixed height) already lets it grow to fit.
-                fontSize: 'clamp(1.05rem, 5vw, 2rem)',
+                // 30 Sep 2026, round 2 (Nick: "Opportunities" was splitting
+                // mid-word — "OPPORTUNITI/ES"). Round 1's fix (`5vw` +
+                // `wordBreak: 'break-word'`) had two problems: `vw` scales
+                // off the FULL viewport width, but the space actually left
+                // for the title is that minus the fixed-width menu button,
+                // sync/logout icons, and padding around them — a much
+                // bigger fraction of a small screen than a large one — so
+                // the size it picked was still too big to fit "Opportunities"
+                // at some widths; `wordBreak: 'break-word'` was then papering
+                // over that by hyphenating the word wherever it ran out of
+                // room, which is the ugly break Nick's flagging here.
+                // Fixed properly: `containerType: 'inline-size'` on the
+                // wrapping div (above) turns IT into the sizing reference,
+                // so `cqw` below means "% of the space actually available
+                // to the title", not "% of the screen" — accurate regardless
+                // of what's sitting next to it. The 9cqw/13-char math (worked
+                // out against "Opportunities", the longest label) keeps it
+                // fitting on one line at realistic phone widths; `wordBreak`
+                // is back to the browser default (never break mid-word) —
+                // if a future label ever still doesn't fit at the tiniest
+                // supported width, the fallback is wrapping at a word
+                // boundary or, for a single word, harmlessly running slightly
+                // past its box, never a hyphen through the middle of a word.
+                fontSize: 'clamp(0.85rem, 9cqw, 2rem)',
                 letterSpacing: 'var(--tracking-display)',
                 textTransform: 'uppercase',
                 color: 'var(--text-heading)',
                 margin: 0,
-                wordBreak: 'break-word',
               }}
             >
               {active.label}
