@@ -24,6 +24,7 @@ Stray `app/` and `components/` at the repo root are not part of the app — don'
 - **stt-dashboard-next** (this repo): the dashboard. Fixes to how data is **displayed** go here.
 - **stt-social-listening**: owns the `/api/sync/*` data-pull endpoints. Fixes to how data is **pulled** go there.
 - Both share one Neon Postgres database.
+- In this repo, `app/api/sync/[source]` is a proxy that forwards requests to stt-social-listening's live endpoints. `app/api/sync/translate` and `app/api/sync/ai-summary` are local routes that run here.
 
 ## Schema changes
 - Written as numbered SQL migration files in `stt-social-listening/db/`.
