@@ -13,6 +13,20 @@ import { Toast } from './Toast';
 //      app/globals.css) instead of a JS `useNarrow()` width hook, so there's
 //      no server/client layout mismatch on first paint.
 //   2. All 7 views now have real routes.
+
+// A plain, hand-bumped version tag (added 30 Sep 2026, Nick's request: "we
+// should track and list the version number on the page so we can keep
+// things up to date"), shown in the sidebar footer via DataStamp below so
+// anyone looking at the live site — Nick, his team, a future session of
+// this — can tell at a glance whether they're looking at the latest build.
+// There's no build pipeline here to derive this automatically (no git/CLI
+// access in this environment — see the project doc), so it's manual:
+// bump PATCH for a bug fix, MINOR for a shipped feature, MAJOR only for a
+// change to how the dashboard is used/deployed (e.g. the eventual domain
+// cutover). Started at 1.0.0 today rather than reconstructing one
+// retroactively for everything already shipped before this existed.
+export const DASHBOARD_VERSION = '1.0.0';
+
 export const VIEWS = [
   { id: 'now', href: '/', label: 'Right now', icon: 'activity' },
   { id: 'voice', href: '/voice', label: 'Fan voice', icon: 'message-square' },
@@ -243,6 +257,19 @@ export function Shell({ view, pull, lastComment, children }) {
         // scrolls normally if the nav's content is taller than the
         // viewport), only the horizontal edge is now a hard boundary.
         overflowX: 'clip',
+        // 30 Sep 2026 (Nick's phone test: "the nav doesn't scroll, I drag
+        // my finger down and it doesn't register"): the mobile drawer wraps
+        // this same nav in a `position: fixed; inset: 0` overlay sized to
+        // exactly the viewport height. With items now 120px tall, the full
+        // nav (header + 7 items + footer) is comfortably taller than most
+        // phone screens — but overflow here was 'visible', so the extra
+        // content just rendered past the bottom of that fixed box with no
+        // scrollable element to drag, and a touch-drag over a fixed overlay
+        // doesn't fall through to scroll the page behind it either. This
+        // makes the nav itself the scrollable element, on both mobile and
+        // desktop, whenever its content doesn't fit.
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
       }}
     >
       <div style={{ padding: 'var(--space-5) var(--space-4)', borderBottom: '1px solid var(--border-hairline)', color: 'var(--stt-ice)' }}>
@@ -265,6 +292,9 @@ export function Shell({ view, pull, lastComment, children }) {
         ))}
       </div>
       <DataStamp pull={pull} lastComment={lastComment} sync={sync} />
+      <div style={{ padding: 'var(--space-2) var(--space-4)', borderTop: '1px solid var(--border-hairline)' }}>
+        <span style={{ ...STAMP_LINE, color: 'var(--text-disabled)' }}>Dashboard v{DASHBOARD_VERSION}</span>
+      </div>
     </nav>
   );
 
