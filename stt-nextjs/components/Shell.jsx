@@ -332,7 +332,29 @@ export function Shell({ view, pull, lastComment, children }) {
             <Icon name="menu" size={20} />
           </button>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h1 style={{ font: 'var(--type-h3)', letterSpacing: 'var(--tracking-display)', textTransform: 'uppercase', color: 'var(--text-heading)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <h1
+              style={{
+                font: 'var(--type-h3)',
+                // 30 Sep 2026 (Nick's phone screenshot: "FAN V..." — the
+                // title was truncating on narrow screens). The old fixed
+                // 32px size plus nowrap/ellipsis assumed desktop-width
+                // header real estate. This overrides just the size portion
+                // of the `font` shorthand above with a fluid one: it scales
+                // down smoothly on narrow viewports (down to ~17px) and
+                // caps back out at the original 32px once there's room, so
+                // desktop is unchanged. wordBreak is a last-resort safety
+                // net for the longest labels ("Opportunities") on truly
+                // tiny/split-screen widths — normal wrapping onto a second
+                // line handles everything else, and the header's `minHeight`
+                // (not a fixed height) already lets it grow to fit.
+                fontSize: 'clamp(1.05rem, 5vw, 2rem)',
+                letterSpacing: 'var(--tracking-display)',
+                textTransform: 'uppercase',
+                color: 'var(--text-heading)',
+                margin: 0,
+                wordBreak: 'break-word',
+              }}
+            >
               {active.label}
             </h1>
           </div>
