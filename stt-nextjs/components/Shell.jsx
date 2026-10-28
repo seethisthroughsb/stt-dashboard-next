@@ -25,7 +25,7 @@ import { Toast } from './Toast';
 // change to how the dashboard is used/deployed (e.g. the eventual domain
 // cutover). Started at 1.0.0 today rather than reconstructing one
 // retroactively for everything already shipped before this existed.
-export const DASHBOARD_VERSION = '1.0.1';
+export const DASHBOARD_VERSION = '1.1.0';
 
 export const VIEWS = [
   { id: 'now', href: '/', label: 'Right now', icon: 'activity' },
@@ -286,7 +286,7 @@ export function Shell({ view, pull, lastComment, children }) {
       <div style={{ padding: 'var(--space-5) var(--space-4)', borderBottom: '1px solid var(--border-hairline)', color: 'var(--stt-ice)' }}>
         <Logo lockup="mark" size={30} />
         <div style={{ font: 'var(--type-label-sm)', letterSpacing: 'var(--tracking-label)', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: 'var(--space-3)' }}>
-          Social listening
+          The Signal
         </div>
       </div>
       {/* alignContent: 'start' is load-bearing: without it, CSS Grid's

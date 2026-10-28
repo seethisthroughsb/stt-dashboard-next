@@ -70,7 +70,7 @@ export default function LoginPage() {
               textAlign: 'center',
             }}
           >
-            STT Social Listening
+            The Signal
           </span>
         </div>
 
